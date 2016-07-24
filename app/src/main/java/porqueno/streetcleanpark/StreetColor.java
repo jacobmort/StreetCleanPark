@@ -33,7 +33,7 @@ public class StreetColor {
 		} else if (isTimePastStarting(now, startHour, startMinute)) {
 			now = advanceDayToNextWeek(now, cleaningWeekday);
 		}
-		now.set(Calendar.HOUR, startHour);
+		now.set(Calendar.HOUR_OF_DAY, startHour);
 		now.set(Calendar.MINUTE, startMinute);
 		return now;
 	}
@@ -43,7 +43,7 @@ public class StreetColor {
 	}
 
 	private static boolean isTimePastStarting(Calendar time, int startHour, int startMinute) {
-		int hour = time.get(Calendar.HOUR);
+		int hour = time.get(Calendar.HOUR_OF_DAY);
 		if (hour > startHour) {
 			return true;
 		} else if (hour == startHour && time.get(Calendar.MINUTE) >= startMinute) {

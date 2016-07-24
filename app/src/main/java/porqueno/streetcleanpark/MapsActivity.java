@@ -20,10 +20,9 @@ import java.util.Calendar;
 import java.util.List;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
-	// Lines for E/W N/S sides of street overlap
 	private static final double COORD_ADJUST_AMOUNT = 0.0000003;
 	private static final float DEFAULT_LINE_WIDTH = 10.0f;
-	private static final int DEFAULT_DESIRED_PARK_HOURS = 72;
+	private static final int DEFAULT_DESIRED_PARK_HOURS = 24;
 	private GoogleMap mMap;
 	private GeoJsonFeature mLastFeatureActive;
 	private Snackbar mSnackbar;
