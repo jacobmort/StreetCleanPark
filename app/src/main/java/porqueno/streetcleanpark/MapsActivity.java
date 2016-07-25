@@ -4,6 +4,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.FragmentActivity;
+import android.text.TextUtils;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -105,7 +106,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 				FeatureHelper.getStartHour(feature),
 				FeatureHelper.getStartMin(feature),
 				FeatureHelper.getEndHour(feature),
-				FeatureHelper.getEndMin(feature)
+				FeatureHelper.getEndMin(feature),
+				FeatureHelper.getWeekOne(feature),
+				FeatureHelper.getWeekTwo(feature),
+				FeatureHelper.getWeekThree(feature),
+				FeatureHelper.getWeekFour(feature)
+
 		);
 		return getColor(now, next, DEFAULT_DESIRED_PARK_HOURS);
 	}
@@ -160,13 +166,38 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	}
 
 	private String getToastText(GeoJsonFeature feature) {
-		return feature.getProperty("STREETNAME") +
+		String toastText =
+			feature.getProperty("STREETNAME") +
 				" " +
 				feature.getProperty("WEEKDAY") +
 				" from " +
 				feature.getProperty("FROMHOUR") +
 				"-" +
 				feature.getProperty("TOHOUR");
+
+		if (FeatureHelper.anyWeeksOff(feature)){
+			toastText += " " + getToastTextWhichWeeks(feature);
+		}
+
+		return toastText;
+	}
+
+	private String getToastTextWhichWeeks(GeoJsonFeature feature) {
+		List<String> days = new ArrayList<>();
+		if (!FeatureHelper.getWeekOne(feature)) {
+			days.add("1st");
+		}
+		if (!FeatureHelper.getWeekTwo(feature)){
+			days.add("2nd");
+		}
+		if (!FeatureHelper.getWeekThree(feature)) {
+			days.add("3rd");
+		}
+
+		if (!FeatureHelper.getWeekFour(feature)){
+			days.add("4th");
+		}
+		return TextUtils.join(", ", days) + " " +feature.getProperty("WEEKDAY") + " of the month";
 	}
 
 	public static int getColor(Calendar now, Calendar then, int desiredHoursToPark) {

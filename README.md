@@ -1,4 +1,7 @@
 
+### Google Maps API Key
+Create a value string "google_maps_key" with your key from play console 
+
 ### Android Maps Utils Dependency
 Built from source from [PR](https://github.com/googlemaps/android-maps-utils/pull/286) so that I can use feature click handler.
 Once this is released has been released can move to repo in gradle rather than local lib.
