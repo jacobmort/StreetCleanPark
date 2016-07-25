@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GeoJsonLayer.GeoJsonOnFeatureClickListener {
 	private static final double COORD_ADJUST_AMOUNT = 0.0000003;
 	private static final float DEFAULT_LINE_WIDTH = 10.0f;
 	private static final int DEFAULT_DESIRED_PARK_HOURS = 24;
@@ -53,30 +53,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	@Override
 	public void onMapReady(GoogleMap googleMap) {
 		mMap = googleMap;
-
 		// Add a marker in sf and move the camera
 		LatLng sf = new LatLng(37.751019, -122.506810);
 
 		try {
 			GeoJsonLayer layer = new GeoJsonLayer(googleMap, R.raw.outer_sunset, this);
 			defaultStyleTheFeatures(layer);
-			layer.setOnFeatureClickListener(new GeoJsonLayer.GeoJsonOnFeatureClickListener() {
-				@Override
-				public void onFeatureClick(GeoJsonFeature feature) {
-					if (mLastFeatureActive != null) {
-						setFeatureHoverOffStyle(mLastFeatureActive);
-					}
-					mLastFeatureActive = feature;
-					setFeatureHoverStyle(feature);
-					if (mSnackbar == null){
-						mSnackbar = Snackbar.make(findViewById(R.id.map), getToastText(feature), Snackbar.LENGTH_INDEFINITE);
-						mSnackbar.show();
-					} else {
-						mSnackbar.setText(getToastText(feature));
-					}
-				}
-			});
-
+			layer.setOnFeatureClickListener(this);
 			layer.addLayerToMap();
 			mMap.moveCamera(CameraUpdateFactory.newLatLng(sf));
 			mMap.animateCamera( CameraUpdateFactory.zoomTo( 17.0f ) );
@@ -87,8 +70,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		}
 	}
 
+	public void onFeatureClick(GeoJsonFeature feature) {
+		if (mLastFeatureActive != null) {
+			setFeatureHoverOffStyle(mLastFeatureActive);
+		}
+		mLastFeatureActive = feature;
+		setFeatureHoverStyle(feature);
+		if (mSnackbar == null){
+			mSnackbar = Snackbar.make(findViewById(R.id.map), getToastText(feature), Snackbar.LENGTH_INDEFINITE);
+			mSnackbar.show();
+		} else {
+			mSnackbar.setText(getToastText(feature));
+		}
+	}
+
 	private void defaultStyleTheFeatures(GeoJsonLayer layer) {
-		// Iterate over all the features stored in the layer
 		for (GeoJsonFeature feature : layer.getFeatures()) {
 			setFeatureColor(feature, calculateColorForFeature(feature));
 			feature.setGeometry(getAdjustedGeo(feature));
@@ -130,7 +126,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 				} else if (side.equals("West")) {
 					lngAdj = 1.0 + COORD_ADJUST_AMOUNT;
 				} else if (side.equals("North")) {
-					// Lat needs bigger adj than long
+					// Lat needs bigger adj than lng
 					latAdj = 1.0 + COORD_ADJUST_AMOUNT * 2;
 				} else if (side.equals("South")) {
 					// South sides already seem off from center
@@ -146,8 +142,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		} else {
 			adjPoints = points;
 		}
-
-
 		return new GeoJsonLineString(adjPoints);
 	}
 
