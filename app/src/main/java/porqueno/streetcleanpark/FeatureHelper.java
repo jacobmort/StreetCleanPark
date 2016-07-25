@@ -32,18 +32,28 @@ public class FeatureHelper {
 	}
 
 	public static int getStartHour(GeoJsonFeature feature) {
-		return getStartHour(feature.getProperty("FROMHOUR"));
+		return getHour(feature.getProperty("FROMHOUR"));
 	}
 
-	public static int getStartHour(String time) {
-		return Integer.parseInt(time.substring(0, 2));
+	public static int getEndHour(GeoJsonFeature feature) {
+		return getHour(feature.getProperty("TOHOUR"));
 	}
 
 	public static int getStartMin(GeoJsonFeature feature) {
-		return getStartMin(feature.getProperty("FROMHOUR"));
+		return getMin(feature.getProperty("FROMHOUR"));
 	}
 
-	public static int getStartMin(String time) {
+	public static int getEndMin(GeoJsonFeature feature) {
+		return getMin(feature.getProperty("TOHOUR"));
+	}
+
+	public static int getHour(String time) {
+		return Integer.parseInt(time.substring(0, 2));
+	}
+
+	public static int getMin(String time) {
 		return Integer.parseInt(time.substring(3, 5));
 	}
+
+
 }

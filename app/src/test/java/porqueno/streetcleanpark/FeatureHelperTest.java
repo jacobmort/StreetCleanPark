@@ -11,22 +11,22 @@ import static org.hamcrest.core.Is.is;
 public class FeatureHelperTest {
 
 	@Test
-	public void getStartHour() throws Exception {
-		assertThat(FeatureHelper.getStartHour("09:00"), is(9));
+	public void getHour() throws Exception {
+		assertThat(FeatureHelper.getHour("09:00"), is(9));
 	}
 
 	@Test
-	public void getStartHour_miliatary() throws Exception {
-		assertThat(FeatureHelper.getStartHour("13:00"), is(13));
+	public void getHour_miliatary() throws Exception {
+		assertThat(FeatureHelper.getHour("13:00"), is(13));
 	}
 
 	@Test
-	public void getStartMin() throws Exception {
-		assertThat(FeatureHelper.getStartMin("09:00"), is(0));
+	public void getMin() throws Exception {
+		assertThat(FeatureHelper.getMin("09:00"), is(0));
 	}
 
 	@Test
-	public void getStartMin_miliatary() throws Exception {
-		assertThat(FeatureHelper.getStartMin("13:30"), is(30));
+	public void getMin_miliatary() throws Exception {
+		assertThat(FeatureHelper.getMin("13:30"), is(30));
 	}
 }

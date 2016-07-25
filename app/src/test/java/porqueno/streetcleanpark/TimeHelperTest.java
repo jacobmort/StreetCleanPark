@@ -9,7 +9,7 @@ import static org.hamcrest.core.Is.is;
 /**
  * To work on unit tests, switch the Test Artifact in the Build Variants view.
  */
-public class StreetColorTest {
+public class TimeHelperTest {
 
 	private static void checkDate(Calendar date,
 								  int expectedYear,
@@ -26,48 +26,40 @@ public class StreetColorTest {
 		assertThat(date.get(Calendar.MINUTE), is(expectedMin));
 	}
 
-
-	@Test
-	public void getColor_no_time() throws Exception {
-		Calendar now = Calendar.getInstance();
-		Calendar then = Calendar.getInstance();
-		assertThat(StreetColor.getColor(now, then, 1), is(StreetColor.NO_TIME));
-	}
-
-	@Test
-	public void getColor_exact() throws Exception {
-		Calendar now = Calendar.getInstance();
-		Calendar then = Calendar.getInstance();
-		then.add(Calendar.HOUR, 1);
-
-		assertThat(StreetColor.getColor(now, then, 1), is(StreetColor.LONG_TIME));
-	}
-
-	@Test
-	public void getNextOccurrence_fully_next_week() throws Exception {
-		Calendar startDate = Calendar.getInstance();
-		startDate.set(2016, Calendar.JULY, 21, 9, 30, 35);
-
-		Calendar nextCleaning = StreetColor.getNextOccurrence(startDate, Calendar.THURSDAY, 9, 30);
-		checkDate(nextCleaning, 2016, Calendar.JULY, 28, Calendar.THURSDAY, 9, 30);
-	}
-
 	@Test
 	public void getNextOccurrence_this_week() throws Exception {
 		Calendar startDate = Calendar.getInstance();
 		startDate.set(2016, Calendar.JULY, 21, 9, 30, 35);
 
-		Calendar nextCleaning = StreetColor.getNextOccurrence(startDate, Calendar.FRIDAY, 13, 0);
+		Calendar nextCleaning = TimeHelper.getNextOccurrence(startDate, Calendar.FRIDAY, 13, 0, 15, 0);
 		checkDate(nextCleaning, 2016, Calendar.JULY, 22, Calendar.FRIDAY, 13, 0);
 	}
 
 	@Test
-	public void getNextOccurrence_today() throws Exception {
+	public void getNextOccurrence_today_later() throws Exception {
 		Calendar startDate = Calendar.getInstance();
 		startDate.set(2016, Calendar.JULY, 21, 9, 30, 35);
 
-		Calendar nextCleaning = StreetColor.getNextOccurrence(startDate, Calendar.THURSDAY, 13, 0);
+		Calendar nextCleaning = TimeHelper.getNextOccurrence(startDate, Calendar.THURSDAY, 13, 0, 15, 0);
 		checkDate(nextCleaning, 2016, Calendar.JULY, 21, Calendar.THURSDAY, 13, 0);
+	}
+
+	@Test
+	public void getNextOccurrence_today_now() throws Exception {
+		Calendar startDate = Calendar.getInstance();
+		startDate.set(2016, Calendar.JULY, 21, 13, 30, 35);
+
+		Calendar nextCleaning = TimeHelper.getNextOccurrence(startDate, Calendar.THURSDAY, 13, 0, 15, 0);
+		checkDate(nextCleaning, 2016, Calendar.JULY, 21, Calendar.THURSDAY, 13, 0);
+	}
+
+	@Test
+	public void getNextOccurrence_today_before() throws Exception {
+		Calendar startDate = Calendar.getInstance();
+		startDate.set(2016, Calendar.JULY, 21, 11, 31, 35);
+
+		Calendar nextCleaning = TimeHelper.getNextOccurrence(startDate, Calendar.THURSDAY, 9, 30, 11, 30);
+		checkDate(nextCleaning, 2016, Calendar.JULY, 28, Calendar.THURSDAY, 9, 30);
 	}
 
 	@Test
@@ -75,16 +67,16 @@ public class StreetColorTest {
 		Calendar startDate = Calendar.getInstance();
 		startDate.set(2016, Calendar.JULY, 31, 9, 30, 35);
 
-		Calendar nextCleaning = StreetColor.getNextOccurrence(startDate, Calendar.MONDAY, 13, 0);
+		Calendar nextCleaning = TimeHelper.getNextOccurrence(startDate, Calendar.MONDAY, 13, 0, 15, 0);
 		checkDate(nextCleaning, 2016, Calendar.AUGUST, 1, Calendar.MONDAY, 13, 0);
 	}
 
 	@Test
 	public void getNextOccurrence_rollover_year() throws Exception {
 		Calendar startDate = Calendar.getInstance();
-		startDate.set(2016, Calendar.DECEMBER, 31, 9, 30, 35);
+		startDate.set(2016, Calendar.DECEMBER, 31, 11, 1, 35);
 
-		Calendar nextCleaning = StreetColor.getNextOccurrence(startDate, Calendar.SATURDAY, 9, 0);
+		Calendar nextCleaning = TimeHelper.getNextOccurrence(startDate, Calendar.SATURDAY, 9, 0, 11, 0);
 		checkDate(nextCleaning, 2017, Calendar.JANUARY, 7, Calendar.SATURDAY, 9, 0);
 	}
 }

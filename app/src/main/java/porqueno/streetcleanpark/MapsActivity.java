@@ -23,6 +23,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	private static final double COORD_ADJUST_AMOUNT = 0.0000003;
 	private static final float DEFAULT_LINE_WIDTH = 10.0f;
 	private static final int DEFAULT_DESIRED_PARK_HOURS = 24;
+	public final static int NO_TIME = Color.RED;
+	public final static int LONG_TIME = Color.GREEN;
+
 	private GoogleMap mMap;
 	private GeoJsonFeature mLastFeatureActive;
 	private Snackbar mSnackbar;
@@ -100,8 +103,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	private int calculateColorForFeature(GeoJsonFeature feature) {
 		Calendar now = Calendar.getInstance();
-		Calendar next = StreetColor.getNextOccurrence(now, FeatureHelper.getWeekday(feature), FeatureHelper.getStartHour(feature), FeatureHelper.getStartMin(feature));
-		return StreetColor.getColor(now, next, DEFAULT_DESIRED_PARK_HOURS);
+		Calendar next = TimeHelper.getNextOccurrence(
+				now,
+				FeatureHelper.getWeekday(feature),
+				FeatureHelper.getStartHour(feature),
+				FeatureHelper.getStartMin(feature),
+				FeatureHelper.getEndHour(feature),
+				FeatureHelper.getEndMin(feature)
+		);
+		return getColor(now, next, DEFAULT_DESIRED_PARK_HOURS);
 	}
 
 	private GeoJsonLineString getAdjustedGeo(GeoJsonFeature feature) {
@@ -163,5 +173,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 				feature.getProperty("FROMHOUR") +
 				"-" +
 				feature.getProperty("TOHOUR");
+	}
+
+	public static int getColor(Calendar now, Calendar then, int desiredHoursToPark) {
+		long hoursDiff = TimeHelper.getHoursDiff(now, then);
+		if (hoursDiff < desiredHoursToPark) {
+			return NO_TIME;
+		} else {
+			return LONG_TIME;
+		}
 	}
 }
