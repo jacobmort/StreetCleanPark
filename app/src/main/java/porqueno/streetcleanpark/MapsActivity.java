@@ -70,8 +70,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 		try {
 			GeoJsonLayer layer = new GeoJsonLayer(googleMap, R.raw.outer_sunset, this);
-			mFeatureModel.importAllData(layer);
 			initTheFeatures(layer);
+			mFeatureModel.getFeaturesForPoint(sf.latitude, sf.longitude);
 			layer.setOnFeatureClickListener(this);
 			layer.addLayerToMap();
 			mMap.moveCamera(CameraUpdateFactory.newLatLng(sf));
