@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "1023594284264",
+    "firebase_url": "https://cleanpark-a0563.firebaseio.com",
+    "project_id": "cleanpark-a0563",
+    "storage_bucket": "cleanpark-a0563.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1023594284264:android:ed8f15099e234138",
+        "android_client_info": {
+          "package_name": "porqueno.streetcleanpark"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1023594284264-je8gvqvgepjl5t3t3nkr33fuht0cuolq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "porqueno.streetcleanpark",
+            "certificate_hash": "183F9EFE15F04B98BEF3CDAD46A81E218D5F41AA"
+          }
+        },
+        {
+          "client_id": "1023594284264-aridsm319qc280pt8gosj5humcufkpt3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCA_XXjE1c7hzo0ydwxG2lknBE4geE9Xis"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1023594284264-aridsm319qc280pt8gosj5humcufkpt3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

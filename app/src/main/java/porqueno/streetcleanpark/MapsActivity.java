@@ -39,6 +39,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	private GeoJsonFeature mLastFeatureActive;
 	private Snackbar mSnackbar;
 	private Map<String, List<GeoJsonFeature>> mBlockSideFeaturesLookup;
+	private FeatureModel mFeatureModel;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -49,6 +50,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 				.findFragmentById(R.id.map);
 		mapFragment.getMapAsync(this);
 		mBlockSideFeaturesLookup = new HashMap<>();
+		mFeatureModel = new FeatureModel();
 	}
 
 	/**
@@ -68,6 +70,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 		try {
 			GeoJsonLayer layer = new GeoJsonLayer(googleMap, R.raw.outer_sunset, this);
+			mFeatureModel.importAllData(layer);
 			initTheFeatures(layer);
 			layer.setOnFeatureClickListener(this);
 			layer.addLayerToMap();

@@ -2,7 +2,10 @@ package porqueno.streetcleanpark;
 
 import android.text.TextUtils;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.maps.android.geojson.GeoJsonFeature;
+import com.google.maps.android.geojson.GeoJsonGeometry;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -11,6 +14,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import porqueno.streetcleanpark.serialize.GeoJsonFeatureInstanceCreator;
+import porqueno.streetcleanpark.serialize.GeoJsonGeometryDeserializer;
 
 /**
  * Created by jacob on 7/23/16.
@@ -125,5 +131,19 @@ public class FeatureHelper {
 		} else {
 			return TextUtils.join(", ", days.toArray());
 		}
+	}
+
+	public static String serialize(GeoJsonFeature feature) {
+		Gson gson = new Gson();
+		return gson.toJson(feature);
+	}
+
+	public static GeoJsonFeature deserialize(String json) {
+		GsonBuilder builder = new GsonBuilder();
+		builder.registerTypeAdapter(GeoJsonFeature.class, new GeoJsonFeatureInstanceCreator());
+		//builder.registerTypeAdapter(GeoJsonGeometry.class, new GeoJsonGeometryInstanceCreator());
+		builder.registerTypeAdapter(GeoJsonGeometry.class, new GeoJsonGeometryDeserializer());
+		Gson gson = builder.create();
+		return gson.fromJson(json, GeoJsonFeature.class);
 	}
 }
