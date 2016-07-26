@@ -17,10 +17,13 @@ public class FeatureModel {
 
 	public void importAllData(GeoJsonLayer layer) {
 		DatabaseReference featureRef;
+		mDatabase.getReference("features").removeValue();
+		mDatabase.getReference("type").removeValue();
 		for (GeoJsonFeature feature : layer.getFeatures()) {
+			String json = FeatureHelper.serialize(feature);
 			String key = feature.getProperty("CNN");
 			featureRef = mDatabase.getReference(key);
-			featureRef.setValue(feature);
+			featureRef.setValue(json);
 		}
 	}
 }

@@ -6,6 +6,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.maps.android.geojson.GeoJsonFeature;
 import com.google.maps.android.geojson.GeoJsonGeometry;
+import com.google.maps.android.geojson.GeoJsonLineStringStyle;
+import com.google.maps.android.geojson.GeoJsonPointStyle;
+import com.google.maps.android.geojson.GeoJsonPolygonStyle;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -17,6 +20,9 @@ import java.util.Set;
 
 import porqueno.streetcleanpark.serialize.GeoJsonFeatureInstanceCreator;
 import porqueno.streetcleanpark.serialize.GeoJsonGeometryDeserializer;
+import porqueno.streetcleanpark.serialize.GeoJsonLineStringStyleSerializer;
+import porqueno.streetcleanpark.serialize.GeoJsonPointStyleSerializer;
+import porqueno.streetcleanpark.serialize.GeoJsonPolygonStyleSerializer;
 
 /**
  * Created by jacob on 7/23/16.
@@ -134,7 +140,11 @@ public class FeatureHelper {
 	}
 
 	public static String serialize(GeoJsonFeature feature) {
-		Gson gson = new Gson();
+		GsonBuilder builder = new GsonBuilder();
+		builder.registerTypeAdapter(GeoJsonLineStringStyle.class, new GeoJsonLineStringStyleSerializer());
+		builder.registerTypeAdapter(GeoJsonPointStyle.class, new GeoJsonPointStyleSerializer());
+		builder.registerTypeAdapter(GeoJsonPolygonStyle.class, new GeoJsonPolygonStyleSerializer());
+		Gson gson = builder.create();
 		return gson.toJson(feature);
 	}
 
