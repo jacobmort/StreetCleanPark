@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.FragmentActivity;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -18,18 +19,23 @@ import com.google.maps.android.geojson.GeoJsonLineStringStyle;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GeoJsonLayer.GeoJsonOnFeatureClickListener {
+	private static final String TAG = "MapsActivity";
 	private static final double COORD_ADJUST_AMOUNT = 0.0000003;
 	private static final float DEFAULT_LINE_WIDTH = 10.0f;
 	private static final int DEFAULT_DESIRED_PARK_HOURS = 24;
 	public final static int NO_TIME = Color.RED;
 	public final static int LONG_TIME = Color.GREEN;
+	public final static int NO_DATA = Color.BLACK;
 
 	private GoogleMap mMap;
 	private GeoJsonFeature mLastFeatureActive;
 	private Snackbar mSnackbar;
+	private Map<String, List<GeoJsonFeature>> mBlockSideFeaturesLookup;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -39,8 +45,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
 				.findFragmentById(R.id.map);
 		mapFragment.getMapAsync(this);
+		mBlockSideFeaturesLookup = new HashMap<>();
 	}
-
 
 	/**
 	 * Manipulates the map once available.
@@ -59,7 +65,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 		try {
 			GeoJsonLayer layer = new GeoJsonLayer(googleMap, R.raw.outer_sunset, this);
-			defaultStyleTheFeatures(layer);
+			initTheFeatures(layer);
 			layer.setOnFeatureClickListener(this);
 			layer.addLayerToMap();
 			mMap.moveCamera(CameraUpdateFactory.newLatLng(sf));
@@ -78,18 +84,35 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		mLastFeatureActive = feature;
 		setFeatureHoverStyle(feature);
 		if (mSnackbar == null){
-			mSnackbar = Snackbar.make(findViewById(R.id.map), getToastText(feature), Snackbar.LENGTH_INDEFINITE);
+			mSnackbar = Snackbar.make(findViewById(R.id.map), getToastText(FeatureHelper.getUniqueKeyForBlockSide(feature)), Snackbar.LENGTH_INDEFINITE);
 			mSnackbar.show();
 		} else {
-			mSnackbar.setText(getToastText(feature));
+			mSnackbar.setText(getToastText(FeatureHelper.getUniqueKeyForBlockSide(feature)));
 		}
 	}
 
-	private void defaultStyleTheFeatures(GeoJsonLayer layer) {
+	private void initTheFeatures(GeoJsonLayer layer) {
 		for (GeoJsonFeature feature : layer.getFeatures()) {
-			setFeatureColor(feature, calculateColorForFeature(feature));
 			feature.setGeometry(getAdjustedGeo(feature));
+			addFeatureToMap(feature);
 		}
+		calcColorsForFeatures(layer);
+	}
+
+	private void calcColorsForFeatures(GeoJsonLayer layer) {
+		for (GeoJsonFeature feature : layer.getFeatures()) {
+			setFeatureColor(feature, calculateColorForFeature(FeatureHelper.getUniqueKeyForBlockSide(feature)));
+		}
+	}
+
+	private void addFeatureToMap(GeoJsonFeature feature) {
+		String key = FeatureHelper.getUniqueKeyForBlockSide(feature);
+		List<GeoJsonFeature> blockSideData = mBlockSideFeaturesLookup.get(key);
+		if (blockSideData == null) {
+			blockSideData = new ArrayList<>();
+		}
+		blockSideData.add(feature);
+		mBlockSideFeaturesLookup.put(key, blockSideData);
 	}
 	
 	private void setFeatureColor(GeoJsonFeature feature, int color) {
@@ -98,22 +121,36 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		feature.setLineStringStyle(lineStyle);
 	}
 
-	private int calculateColorForFeature(GeoJsonFeature feature) {
+	private int calculateColorForFeature(String featureKey) {
 		Calendar now = Calendar.getInstance();
-		Calendar next = TimeHelper.getNextOccurrence(
-				now,
-				FeatureHelper.getWeekday(feature),
-				FeatureHelper.getStartHour(feature),
-				FeatureHelper.getStartMin(feature),
-				FeatureHelper.getEndHour(feature),
-				FeatureHelper.getEndMin(feature),
-				FeatureHelper.getWeekOne(feature),
-				FeatureHelper.getWeekTwo(feature),
-				FeatureHelper.getWeekThree(feature),
-				FeatureHelper.getWeekFour(feature)
+		List<GeoJsonFeature> blockSideData = mBlockSideFeaturesLookup.get(featureKey);
+		if (blockSideData != null){
+			Calendar next;
+			Calendar soonest = null;
+			for (GeoJsonFeature feature: blockSideData) {
+				next = TimeHelper.getNextOccurrence(
+						now,
+						FeatureHelper.getWeekday(feature),
+						FeatureHelper.getStartHour(feature),
+						FeatureHelper.getStartMin(feature),
+						FeatureHelper.getEndHour(feature),
+						FeatureHelper.getEndMin(feature),
+						FeatureHelper.getWeekOne(feature),
+						FeatureHelper.getWeekTwo(feature),
+						FeatureHelper.getWeekThree(feature),
+						FeatureHelper.getWeekFour(feature)
 
-		);
-		return getColor(now, next, DEFAULT_DESIRED_PARK_HOURS);
+				);
+
+				if (soonest == null || next.getTimeInMillis() < soonest.getTimeInMillis()){
+					soonest = next;
+				}
+			}
+			return getColor(now, soonest, DEFAULT_DESIRED_PARK_HOURS);
+		}else {
+			Log.e(TAG, "No data for:" + featureKey);
+			return NO_DATA;
+		}
 	}
 
 	private GeoJsonLineString getAdjustedGeo(GeoJsonFeature feature) {
@@ -160,25 +197,38 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	private void setFeatureHoverOffStyle(GeoJsonFeature feature){
 		GeoJsonLineStringStyle lineStyle = new GeoJsonLineStringStyle();
-		lineStyle.setColor(calculateColorForFeature(feature));
+		lineStyle.setColor(calculateColorForFeature(FeatureHelper.getUniqueKeyForBlockSide(feature)));
 		lineStyle.setWidth(DEFAULT_LINE_WIDTH);
 		feature.setLineStringStyle(lineStyle);
 	}
 
-	private String getToastText(GeoJsonFeature feature) {
-		String toastText =
-			feature.getProperty("STREETNAME") +
-				" " +
-				feature.getProperty("WEEKDAY") +
-				" from " +
-				feature.getProperty("FROMHOUR") +
-				"-" +
-				feature.getProperty("TOHOUR");
+	private String getToastText(String featureKey) {
+		List<GeoJsonFeature> blockSideData = mBlockSideFeaturesLookup.get(featureKey);
+		String toastText = "";
+		if (blockSideData != null) {
+			Map<String, List<GeoJsonFeature>> clusteredByDay = FeatureHelper.clusterFeaturesByTime(blockSideData);
+			for (List<GeoJsonFeature> features: clusteredByDay.values()){
+				String days = FeatureHelper.getDays(features);
+				GeoJsonFeature feature = features.get(0); // Clustered by time so any one works
+				if (toastText.equals("")){
+					// Only put streetname 1st once
+					toastText +=
+							feature.getProperty("STREETNAME") + " ";
+				}
+				toastText +=
+						days +
+								" from " +
+								feature.getProperty("FROMHOUR") +
+								"-" +
+								feature.getProperty("TOHOUR");
 
-		if (FeatureHelper.anyWeeksOff(feature)){
-			toastText += " " + getToastTextWhichWeeks(feature);
+				if (FeatureHelper.anyWeeksOff(feature)){
+					toastText += " " + getToastTextWhichWeeks(feature);
+				}
+			}
+		}else {
+			Log.e(TAG, "Block side data not found for:" + featureKey);
 		}
-
 		return toastText;
 	}
 

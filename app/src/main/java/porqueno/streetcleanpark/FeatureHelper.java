@@ -1,8 +1,16 @@
 package porqueno.streetcleanpark;
 
+import android.text.TextUtils;
+
 import com.google.maps.android.geojson.GeoJsonFeature;
 
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Created by jacob on 7/23/16.
@@ -73,5 +81,45 @@ public class FeatureHelper {
 
 	public static int getMin(String time) {
 		return Integer.parseInt(time.substring(3, 5));
+	}
+
+	public static String getUniqueKeyForBlockSide(GeoJsonFeature feature) {
+		return feature.getProperty("CNN") + "-" + feature.getProperty("BLOCKSIDE");
+	}
+
+	public static Map<String,List<GeoJsonFeature>> clusterFeaturesByDay(List<GeoJsonFeature> features) {
+		Map<String, List<GeoJsonFeature>> clustered = new HashMap<>();
+		for (GeoJsonFeature feature : features) {
+			String day = feature.getProperty("WEEKDAY");
+			List<GeoJsonFeature> existing = clustered.get(day);
+			if (existing == null){
+				existing = new ArrayList<GeoJsonFeature>();
+			}
+			existing.add(feature);
+			clustered.put(day, existing);
+		}
+		return clustered;
+	}
+
+	public static Map<String,List<GeoJsonFeature>> clusterFeaturesByTime(List<GeoJsonFeature> features) {
+		Map<String, List<GeoJsonFeature>> clustered = new HashMap<>();
+		for (GeoJsonFeature feature : features) {
+			String time = feature.getProperty("FROMHOUR") + "-" + feature.getProperty("TOHOUR");
+			List<GeoJsonFeature> existing = clustered.get(time);
+			if (existing == null){
+				existing = new ArrayList<GeoJsonFeature>();
+			}
+			existing.add(feature);
+			clustered.put(time, existing);
+		}
+		return clustered;
+	}
+
+	public static String getDays(List<GeoJsonFeature> features){
+		Set<String> days= new HashSet<>();
+		for (GeoJsonFeature feature: features){
+			days.add(feature.getProperty("WEEKDAY"));
+		}
+		return TextUtils.join(", ", days.toArray());
 	}
 }
