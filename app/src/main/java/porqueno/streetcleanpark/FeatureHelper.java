@@ -7,10 +7,10 @@ import com.google.maps.android.geojson.GeoJsonFeature;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Created by jacob on 7/23/16.
@@ -116,10 +116,14 @@ public class FeatureHelper {
 	}
 
 	public static String getDays(List<GeoJsonFeature> features){
-		Set<String> days= new HashSet<>();
+		Set<String> days= new TreeSet<>();
 		for (GeoJsonFeature feature: features){
 			days.add(feature.getProperty("WEEKDAY"));
 		}
-		return TextUtils.join(", ", days.toArray());
+		if (days.size() == 5 && !(days.contains("Sun") || days.contains("Sat"))){
+			return "Weekdays";
+		} else {
+			return TextUtils.join(", ", days.toArray());
+		}
 	}
 }

@@ -18,10 +18,13 @@ import com.google.maps.android.geojson.GeoJsonLineString;
 import com.google.maps.android.geojson.GeoJsonLineStringStyle;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GeoJsonLayer.GeoJsonOnFeatureClickListener {
 	private static final String TAG = "MapsActivity";
@@ -208,7 +211,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		if (blockSideData != null) {
 			Map<String, List<GeoJsonFeature>> clusteredByDay = FeatureHelper.clusterFeaturesByTime(blockSideData);
 			for (List<GeoJsonFeature> features: clusteredByDay.values()){
-				String days = FeatureHelper.getDays(features);
+				String daysString = FeatureHelper.getDays(features);
 				GeoJsonFeature feature = features.get(0); // Clustered by time so any one works
 				if (toastText.equals("")){
 					// Only put streetname 1st once
@@ -216,15 +219,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 							feature.getProperty("STREETNAME") + " ";
 				}
 				toastText +=
-						days +
+						daysString +
 								" from " +
 								feature.getProperty("FROMHOUR") +
 								"-" +
 								feature.getProperty("TOHOUR");
-
-				if (FeatureHelper.anyWeeksOff(feature)){
-					toastText += " " + getToastTextWhichWeeks(feature);
-				}
+				toastText += " " + getToastTextWhichWeeks(features);
 			}
 		}else {
 			Log.e(TAG, "Block side data not found for:" + featureKey);
@@ -232,22 +232,30 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		return toastText;
 	}
 
-	private String getToastTextWhichWeeks(GeoJsonFeature feature) {
-		List<String> days = new ArrayList<>();
-		if (!FeatureHelper.getWeekOne(feature)) {
-			days.add("1st");
-		}
-		if (!FeatureHelper.getWeekTwo(feature)){
-			days.add("2nd");
-		}
-		if (!FeatureHelper.getWeekThree(feature)) {
-			days.add("3rd");
-		}
+	private String getToastTextWhichWeeks(List<GeoJsonFeature> features) {
+		Set<String> days = new HashSet<>();
+		for (GeoJsonFeature feature : features) {
+			if (!FeatureHelper.getWeekOne(feature)) {
+				days.add("1st");
+			}
+			if (!FeatureHelper.getWeekTwo(feature)) {
+				days.add("2nd");
+			}
+			if (!FeatureHelper.getWeekThree(feature)) {
+				days.add("3rd");
+			}
 
-		if (!FeatureHelper.getWeekFour(feature)){
-			days.add("4th");
+			if (!FeatureHelper.getWeekFour(feature)) {
+				days.add("4th");
+			}
 		}
-		return TextUtils.join(", ", days) + " " +feature.getProperty("WEEKDAY") + " of the month";
+		if (days.size() != 4 && days.size() != 0) {
+			String[] daysArr = days.toArray(new String[days.size()]);
+			Arrays.sort(daysArr);
+			return TextUtils.join(", ", daysArr) + " of the month";
+		} else {
+			return "";
+		}
 	}
 
 	public static int getColor(Calendar now, Calendar then, int desiredHoursToPark) {
