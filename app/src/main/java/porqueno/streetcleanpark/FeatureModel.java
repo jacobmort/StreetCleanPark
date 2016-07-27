@@ -44,6 +44,7 @@ public class FeatureModel {
 	private static final String TAG = "FeatureModel";
 	private FirebaseDatabase mDatabase;
 	private GeoFire mGeoFire;
+	private GeoQuery mGeoQuery;
 	private MapsActivity mActivity; // Make sure model dies with this activity otherwise leak memory
 	private List<GeoJsonFeature> mNearbyFeatures;
 	private int outstandingRequests;
@@ -77,8 +78,16 @@ public class FeatureModel {
 	}
 
 	public void getFeaturesForPoint(double lat, double lng) {
-		GeoQuery geoQuery = mGeoFire.queryAtLocation(new GeoLocation(lat, lng), 1.5);
-		geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
+		if (mGeoQuery == null) {
+			setupGeoQuery(lat, lng);
+		} else {
+			mGeoQuery.setCenter(new GeoLocation(lat, lng));
+		}
+	}
+
+	private void setupGeoQuery(double lat, double lng) {
+		mGeoQuery = mGeoFire.queryAtLocation(new GeoLocation(lat, lng), 0.5);
+		mGeoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
 			@Override
 			public void onKeyEntered(String key, GeoLocation location) {
 				System.out.println(String.format("Key %s entered the search area at [%f,%f]", key, location.latitude, location.longitude));

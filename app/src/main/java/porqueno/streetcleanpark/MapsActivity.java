@@ -11,6 +11,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.maps.android.geojson.GeoJsonFeature;
 import com.google.maps.android.geojson.GeoJsonLayer;
@@ -28,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GeoJsonLayer.GeoJsonOnFeatureClickListener {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GeoJsonLayer.GeoJsonOnFeatureClickListener, GoogleMap.OnCameraChangeListener {
 	private static final String TAG = "MapsActivity";
 	private static final double COORD_ADJUST_AMOUNT = 0.0000003;
 	private static final float DEFAULT_LINE_WIDTH = 10.0f;
@@ -70,14 +71,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		mMap = googleMap;
 		// Add a marker in sf and move the camera
 		LatLng sf = new LatLng(37.751019, -122.506810);
-
+		googleMap.setOnCameraChangeListener(this);
 //		try {
 //			mFeatureModel.importAllData(new GeoJsonLayer(mMap, R.raw.outer_sunset, this));
 //			mFeatureModel.setAllGeos(new GeoJsonLayer(mMap, R.raw.outer_sunset, this));
 //			GeoJsonLayer layer = new GeoJsonLayer(googleMap, R.raw.outer_sunset, this);
 			mLayer = new GeoJsonLayer(googleMap, new JSONObject());
 //			initTheFeatures(layer);
-			mFeatureModel.getFeaturesForPoint(sf.latitude, sf.longitude);
+			//mFeatureModel.getFeaturesForPoint(sf.latitude, sf.longitude);
 			mLayer.setOnFeatureClickListener(this);
 			mLayer.addLayerToMap();
 			mMap.moveCamera(CameraUpdateFactory.newLatLng(sf));
@@ -288,5 +289,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	public void addFeatureToMap(GeoJsonFeature feature){
 		mLayer.addFeature(feature);
 		initTheFeature(feature);
+	}
+
+	public void onCameraChange (CameraPosition position) {
+		mFeatureModel.getFeaturesForPoint(position.target.latitude, position.target.longitude);
 	}
 }
