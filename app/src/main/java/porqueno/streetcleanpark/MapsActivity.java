@@ -2,6 +2,7 @@ package porqueno.streetcleanpark;
 
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.FragmentActivity;
 import android.text.TextUtils;
@@ -37,6 +38,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	public final static int NO_TIME = Color.RED;
 	public final static int LONG_TIME = Color.GREEN;
 	public final static int NO_DATA = Color.BLACK;
+	private final static long PAN_DEBOUNCE_THRESHOLD_MS = 1000;
 
 	private GoogleMap mMap;
 	private GeoJsonLayer mLayer;
@@ -44,6 +46,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	private Snackbar mSnackbar;
 	private Map<String, List<GeoJsonFeature>> mBlockSideFeaturesLookup;
 	private FeatureModel mFeatureModel;
+	private long previousCameraPanMs;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -55,6 +58,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		mapFragment.getMapAsync(this);
 		mBlockSideFeaturesLookup = new HashMap<>();
 		mFeatureModel = new FeatureModel(this);
+		previousCameraPanMs = 0;
 	}
 
 	/**
@@ -73,12 +77,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		LatLng sf = new LatLng(37.751019, -122.506810);
 		googleMap.setOnCameraChangeListener(this);
 //		try {
-//			mFeatureModel.importAllData(new GeoJsonLayer(mMap, R.raw.streetsweep_latlng, this));
-//			mFeatureModel.setAllGeos(new GeoJsonLayer(mMap, R.raw.streetsweep_latlng, this));
-//			GeoJsonLayer layer = new GeoJsonLayer(googleMap, R.raw.outer_sunset, this);
+//			GeoJsonLayer layer = new GeoJsonLayer(googleMap, R.raw.streetsweep_latlng, this);
+//			mFeatureModel.importAllData(layer);
+//			mFeatureModel.setAllGeos(layer);
+
 			mLayer = new GeoJsonLayer(googleMap, new JSONObject());
-//			initTheFeatures(layer);
-			//mFeatureModel.getFeaturesForPoint(sf.latitude, sf.longitude);
 			mLayer.setOnFeatureClickListener(this);
 			mLayer.addLayerToMap();
 			mMap.moveCamera(CameraUpdateFactory.newLatLng(sf));
@@ -304,6 +307,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	}
 
 	public void onCameraChange (CameraPosition position) {
-		mFeatureModel.getFeaturesForPoint(position.target.latitude, position.target.longitude);
+		if ((SystemClock.uptimeMillis() - previousCameraPanMs) > PAN_DEBOUNCE_THRESHOLD_MS){
+			mFeatureModel.getFeaturesForPoint(position.target.latitude, position.target.longitude);
+		}
 	}
 }
