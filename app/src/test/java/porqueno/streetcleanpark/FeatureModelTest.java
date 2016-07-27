@@ -16,26 +16,26 @@ import static org.hamcrest.core.Is.is;
 /**
  * Created by jacob on 7/23/16.
  */
-public class FeatureHelperTest {
+public class FeatureModelTest {
 
 	@Test
 	public void getHour() throws Exception {
-		assertThat(FeatureHelper.getHour("09:00"), is(9));
+		assertThat(FeatureModel.getHour("09:00"), is(9));
 	}
 
 	@Test
 	public void getHour_miliatary() throws Exception {
-		assertThat(FeatureHelper.getHour("13:00"), is(13));
+		assertThat(FeatureModel.getHour("13:00"), is(13));
 	}
 
 	@Test
 	public void getMin() throws Exception {
-		assertThat(FeatureHelper.getMin("09:00"), is(0));
+		assertThat(FeatureModel.getMin("09:00"), is(0));
 	}
 
 	@Test
 	public void getMin_miliatary() throws Exception {
-		assertThat(FeatureHelper.getMin("13:30"), is(30));
+		assertThat(FeatureModel.getMin("13:30"), is(30));
 	}
 
 	@Test
@@ -75,9 +75,9 @@ public class FeatureHelperTest {
 
 		GeoJsonFeature feature = new GeoJsonFeature(lineString, null, properties, null);
 
-		String json = FeatureHelper.serialize(feature);
+		String json = FeatureModel.serialize(feature);
 
-		GeoJsonFeature thawedFeature = FeatureHelper.deserialize(json);
+		GeoJsonFeature thawedFeature = FeatureModel.deserialize(json);
 
 		for (String key : thawedFeature.getPropertyKeys()) {
 			assertThat(feature.getProperty(key), is(thawedFeature.getProperty(key)));

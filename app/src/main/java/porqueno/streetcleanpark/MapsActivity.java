@@ -96,10 +96,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		mLastFeatureActive = feature;
 		setFeatureHoverStyle(feature);
 		if (mSnackbar == null){
-			mSnackbar = Snackbar.make(findViewById(R.id.map), getToastText(FeatureHelper.getUniqueKeyForBlockSide(feature)), Snackbar.LENGTH_INDEFINITE);
+			mSnackbar = Snackbar.make(findViewById(R.id.map), getToastText(FeatureModel.getUniqueKeyForBlockSide(feature)), Snackbar.LENGTH_INDEFINITE);
 			mSnackbar.show();
 		} else {
-			mSnackbar.setText(getToastText(FeatureHelper.getUniqueKeyForBlockSide(feature)));
+			mSnackbar.setText(getToastText(FeatureModel.getUniqueKeyForBlockSide(feature)));
 		}
 	}
 
@@ -122,12 +122,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	private void calcColorsForFeatures(GeoJsonLayer layer) {
 		for (GeoJsonFeature feature : layer.getFeatures()) {
-			setFeatureColor(feature, calculateColorForFeature(FeatureHelper.getUniqueKeyForBlockSide(feature)));
+			setFeatureColor(feature, calculateColorForFeature(FeatureModel.getUniqueKeyForBlockSide(feature)));
 		}
 	}
 
 	private void addFeatureToLookup(GeoJsonFeature feature) {
-		String key = FeatureHelper.getUniqueKeyForBlockSide(feature);
+		String key = FeatureModel.getUniqueKeyForBlockSide(feature);
 		List<GeoJsonFeature> blockSideData = mBlockSideFeaturesLookup.get(key);
 		if (blockSideData == null) {
 			blockSideData = new ArrayList<>();
@@ -151,15 +151,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 			for (GeoJsonFeature feature: blockSideData) {
 				next = TimeHelper.getNextOccurrence(
 						now,
-						FeatureHelper.getWeekday(feature),
-						FeatureHelper.getStartHour(feature),
-						FeatureHelper.getStartMin(feature),
-						FeatureHelper.getEndHour(feature),
-						FeatureHelper.getEndMin(feature),
-						FeatureHelper.getWeekOne(feature),
-						FeatureHelper.getWeekTwo(feature),
-						FeatureHelper.getWeekThree(feature),
-						FeatureHelper.getWeekFour(feature)
+						FeatureModel.getWeekday(feature),
+						FeatureModel.getStartHour(feature),
+						FeatureModel.getStartMin(feature),
+						FeatureModel.getEndHour(feature),
+						FeatureModel.getEndMin(feature),
+						FeatureModel.getWeekOne(feature),
+						FeatureModel.getWeekTwo(feature),
+						FeatureModel.getWeekThree(feature),
+						FeatureModel.getWeekFour(feature)
 
 				);
 
@@ -218,7 +218,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	private void setFeatureHoverOffStyle(GeoJsonFeature feature){
 		GeoJsonLineStringStyle lineStyle = new GeoJsonLineStringStyle();
-		lineStyle.setColor(calculateColorForFeature(FeatureHelper.getUniqueKeyForBlockSide(feature)));
+		lineStyle.setColor(calculateColorForFeature(FeatureModel.getUniqueKeyForBlockSide(feature)));
 		lineStyle.setWidth(DEFAULT_LINE_WIDTH);
 		feature.setLineStringStyle(lineStyle);
 	}
@@ -227,9 +227,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		List<GeoJsonFeature> blockSideData = mBlockSideFeaturesLookup.get(featureKey);
 		String toastText = "";
 		if (blockSideData != null) {
-			Map<String, List<GeoJsonFeature>> clusteredByDay = FeatureHelper.clusterFeaturesByTime(blockSideData);
+			Map<String, List<GeoJsonFeature>> clusteredByDay = FeatureModel.clusterFeaturesByTime(blockSideData);
 			for (List<GeoJsonFeature> features: clusteredByDay.values()){
-				String daysString = FeatureHelper.getDays(features);
+				String daysString = FeatureModel.getDays(features);
 				GeoJsonFeature feature = features.get(0); // Clustered by time so any one works
 				if (toastText.equals("")){
 					// Only put streetname 1st once
@@ -253,17 +253,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	private String getToastTextWhichWeeks(List<GeoJsonFeature> features) {
 		Set<String> days = new HashSet<>();
 		for (GeoJsonFeature feature : features) {
-			if (!FeatureHelper.getWeekOne(feature)) {
+			if (!FeatureModel.getWeekOne(feature)) {
 				days.add("1st");
 			}
-			if (!FeatureHelper.getWeekTwo(feature)) {
+			if (!FeatureModel.getWeekTwo(feature)) {
 				days.add("2nd");
 			}
-			if (!FeatureHelper.getWeekThree(feature)) {
+			if (!FeatureModel.getWeekThree(feature)) {
 				days.add("3rd");
 			}
 
-			if (!FeatureHelper.getWeekFour(feature)) {
+			if (!FeatureModel.getWeekFour(feature)) {
 				days.add("4th");
 			}
 		}
