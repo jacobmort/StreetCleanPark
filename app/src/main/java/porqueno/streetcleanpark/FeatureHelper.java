@@ -119,7 +119,7 @@ public class FeatureHelper {
 			String time = feature.getProperty("FROMHOUR") + "-" + feature.getProperty("TOHOUR");
 			List<GeoJsonFeature> existing = clustered.get(time);
 			if (existing == null){
-				existing = new ArrayList<GeoJsonFeature>();
+				existing = new ArrayList<>();
 			}
 			existing.add(feature);
 			clustered.put(time, existing);

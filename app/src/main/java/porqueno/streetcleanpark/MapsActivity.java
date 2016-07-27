@@ -17,6 +17,8 @@ import com.google.maps.android.geojson.GeoJsonLayer;
 import com.google.maps.android.geojson.GeoJsonLineString;
 import com.google.maps.android.geojson.GeoJsonLineStringStyle;
 
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -36,6 +38,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	public final static int NO_DATA = Color.BLACK;
 
 	private GoogleMap mMap;
+	private GeoJsonLayer mLayer;
 	private GeoJsonFeature mLastFeatureActive;
 	private Snackbar mSnackbar;
 	private Map<String, List<GeoJsonFeature>> mBlockSideFeaturesLookup;
@@ -50,7 +53,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 				.findFragmentById(R.id.map);
 		mapFragment.getMapAsync(this);
 		mBlockSideFeaturesLookup = new HashMap<>();
-		mFeatureModel = new FeatureModel();
+		mFeatureModel = new FeatureModel(this);
 	}
 
 	/**
@@ -68,19 +71,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		// Add a marker in sf and move the camera
 		LatLng sf = new LatLng(37.751019, -122.506810);
 
-		try {
-			GeoJsonLayer layer = new GeoJsonLayer(googleMap, R.raw.outer_sunset, this);
-			initTheFeatures(layer);
+//		try {
+//			mFeatureModel.importAllData(new GeoJsonLayer(mMap, R.raw.outer_sunset, this));
+//			mFeatureModel.setAllGeos(new GeoJsonLayer(mMap, R.raw.outer_sunset, this));
+//			GeoJsonLayer layer = new GeoJsonLayer(googleMap, R.raw.outer_sunset, this);
+			mLayer = new GeoJsonLayer(googleMap, new JSONObject());
+//			initTheFeatures(layer);
 			mFeatureModel.getFeaturesForPoint(sf.latitude, sf.longitude);
-			layer.setOnFeatureClickListener(this);
-			layer.addLayerToMap();
+			mLayer.setOnFeatureClickListener(this);
+			mLayer.addLayerToMap();
 			mMap.moveCamera(CameraUpdateFactory.newLatLng(sf));
 			mMap.animateCamera( CameraUpdateFactory.zoomTo( 17.0f ) );
-		} catch (java.io.IOException e) {
-			e.printStackTrace();
-		} catch (org.json.JSONException e) {
-			e.printStackTrace();
-		}
+//		} catch (java.io.IOException e) {
+//			e.printStackTrace();
+//		} catch (org.json.JSONException e) {
+//			e.printStackTrace();
+//		}
 	}
 
 	public void onFeatureClick(GeoJsonFeature feature) {
@@ -100,9 +106,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	private void initTheFeatures(GeoJsonLayer layer) {
 		for (GeoJsonFeature feature : layer.getFeatures()) {
 			feature.setGeometry(getAdjustedGeo(feature));
-			addFeatureToMap(feature);
+			addFeatureToLookup(feature);
 		}
 		calcColorsForFeatures(layer);
+	}
+
+	private void initTheFeature(GeoJsonFeature feature){
+		feature.setGeometry(getAdjustedGeo(feature));
+		addFeatureToLookup(feature);
+	}
+
+	public void calcColorsForFeatures() {
+		calcColorsForFeatures(mLayer);
 	}
 
 	private void calcColorsForFeatures(GeoJsonLayer layer) {
@@ -111,7 +126,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		}
 	}
 
-	private void addFeatureToMap(GeoJsonFeature feature) {
+	private void addFeatureToLookup(GeoJsonFeature feature) {
 		String key = FeatureHelper.getUniqueKeyForBlockSide(feature);
 		List<GeoJsonFeature> blockSideData = mBlockSideFeaturesLookup.get(key);
 		if (blockSideData == null) {
@@ -268,5 +283,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		} else {
 			return LONG_TIME;
 		}
+	}
+
+	public void addFeatureToMap(GeoJsonFeature feature){
+		mLayer.addFeature(feature);
+		initTheFeature(feature);
 	}
 }
