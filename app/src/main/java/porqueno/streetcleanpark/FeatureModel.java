@@ -40,7 +40,7 @@ import porqueno.streetcleanpark.serialize.GeoJsonPolygonStyleSerializer;
 /**
  * Created by jacob on 7/26/16.
  */
-public class FeatureModel {
+public class FeatureModel implements GeoQueryEventListener, ValueEventListener {
 	private static final String TAG = "FeatureModel";
 	private FirebaseDatabase mDatabase;
 	private GeoFire mGeoFire;
@@ -78,6 +78,7 @@ public class FeatureModel {
 	}
 
 	public void getFeaturesForPoint(double lat, double lng) {
+		outstandingRequests = 0;
 		if (mGeoQuery == null) {
 			setupGeoQuery(lat, lng);
 		} else {
@@ -87,55 +88,61 @@ public class FeatureModel {
 
 	private void setupGeoQuery(double lat, double lng) {
 		mGeoQuery = mGeoFire.queryAtLocation(new GeoLocation(lat, lng), 0.5);
-		mGeoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
-			@Override
-			public void onKeyEntered(String key, GeoLocation location) {
-				System.out.println(String.format("Key %s entered the search area at [%f,%f]", key, location.latitude, location.longitude));
-				addValueListener(key);
-			}
-
-			@Override
-			public void onKeyExited(String key) {
-				System.out.println(String.format("Key %s is no longer in the search area", key));
-			}
-
-			@Override
-			public void onKeyMoved(String key, GeoLocation location) {
-				System.out.println(String.format("Key %s moved within the search area to [%f,%f]", key, location.latitude, location.longitude));
-			}
-
-			@Override
-			public void onGeoQueryReady() {
-				System.out.println("All initial data has been loaded and events have been fired!");
-			}
-
-			@Override
-			public void onGeoQueryError(DatabaseError error) {
-				System.err.println("There was an error with this query: " + error);
-			}
-		});
+		mGeoQuery.addGeoQueryEventListener(this);
 	}
 
 	public void addValueListener(String key){
 		outstandingRequests += 1;
-		mDatabase.getReference(key).addValueEventListener(new ValueEventListener() {
-			@Override
-			public void onDataChange(DataSnapshot dataSnapshot) {
-				outstandingRequests -= 1;
-				GeoJsonFeature feature = deserialize(dataSnapshot.getValue(String.class));
-				mActivity.addFeatureToMap(feature);
-				if (outstandingRequests == 0){
-					// We have all data, we can now iterate to calc colors
-					mActivity.calcColorsForFeatures();
-				}
-			}
+		mDatabase.getReference(key).addValueEventListener(this);
+	}
 
-			@Override
-			public void onCancelled(DatabaseError databaseError) {
-				outstandingRequests -= 1;
-				Log.w(TAG, "Failed to read value.", databaseError.toException());
-			}
-		});
+	public void removeValueListener(String key) {
+		mDatabase.getReference(key).removeEventListener(this);
+		mActivity.removeFeatureFromMap(key);
+	}
+
+	@Override
+	public void onKeyEntered(String key, GeoLocation location) {
+		System.out.println(String.format("Key %s entered the search area at [%f,%f]", key, location.latitude, location.longitude));
+		addValueListener(key);
+	}
+
+	@Override
+	public void onKeyExited(String key) {
+		System.out.println(String.format("Key %s is no longer in the search area", key));
+		removeValueListener(key);
+	}
+
+	@Override
+	public void onKeyMoved(String key, GeoLocation location) {
+		System.out.println(String.format("Key %s moved within the search area to [%f,%f]", key, location.latitude, location.longitude));
+	}
+
+	@Override
+	public void onGeoQueryReady() {
+		System.out.println("All initial data has been loaded and events have been fired!");
+	}
+
+	@Override
+	public void onGeoQueryError(DatabaseError error) {
+		System.err.println("There was an error with this query: " + error);
+	}
+
+	@Override
+	public void onDataChange(DataSnapshot dataSnapshot) {
+		outstandingRequests -= 1;
+		GeoJsonFeature feature = deserialize(dataSnapshot.getValue(String.class));
+		mActivity.addFeatureToMap(feature);
+		if (outstandingRequests == 0){
+			// We have all data, we can now iterate to calc colors
+			mActivity.calcColorsForFeatures();
+		}
+	}
+
+	@Override
+	public void onCancelled(DatabaseError databaseError) {
+		outstandingRequests -= 1;
+		Log.w(TAG, "Failed to read value.", databaseError.toException());
 	}
 
 	public static int getWeekday(GeoJsonFeature feature) {

@@ -73,8 +73,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		LatLng sf = new LatLng(37.751019, -122.506810);
 		googleMap.setOnCameraChangeListener(this);
 //		try {
-//			mFeatureModel.importAllData(new GeoJsonLayer(mMap, R.raw.outer_sunset, this));
-//			mFeatureModel.setAllGeos(new GeoJsonLayer(mMap, R.raw.outer_sunset, this));
+//			mFeatureModel.importAllData(new GeoJsonLayer(mMap, R.raw.streetsweep_latlng, this));
+//			mFeatureModel.setAllGeos(new GeoJsonLayer(mMap, R.raw.streetsweep_latlng, this));
 //			GeoJsonLayer layer = new GeoJsonLayer(googleMap, R.raw.outer_sunset, this);
 			mLayer = new GeoJsonLayer(googleMap, new JSONObject());
 //			initTheFeatures(layer);
@@ -289,6 +289,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	public void addFeatureToMap(GeoJsonFeature feature){
 		mLayer.addFeature(feature);
 		initTheFeature(feature);
+	}
+
+	private void removeFeaturesFromMap(List<GeoJsonFeature> features) {
+		for (GeoJsonFeature feature: features){
+			mLayer.removeFeature(feature);
+		}
+	}
+
+	public void removeFeatureFromMap(String key) {
+		if (mBlockSideFeaturesLookup.containsKey(key)){
+			removeFeaturesFromMap(mBlockSideFeaturesLookup.get(key));
+		}
 	}
 
 	public void onCameraChange (CameraPosition position) {
