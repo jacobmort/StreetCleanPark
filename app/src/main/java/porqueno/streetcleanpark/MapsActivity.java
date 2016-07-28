@@ -3,19 +3,22 @@ package porqueno.streetcleanpark;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
+import android.text.Html;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.ProgressBar;
+import android.widget.SeekBar;
+import android.widget.TextView;
 
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -28,7 +31,7 @@ import com.google.maps.android.geojson.GeoJsonFeature;
 import com.google.maps.android.geojson.GeoJsonLayer;
 import com.google.maps.android.geojson.GeoJsonLineString;
 import com.google.maps.android.geojson.GeoJsonLineStringStyle;
-import com.google.android.gms.location.LocationListener;
+
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -40,61 +43,73 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GeoJsonLayer.GeoJsonOnFeatureClickListener, GoogleMap.OnCameraChangeListener, ActivityCompat.OnRequestPermissionsResultCallback, GoogleMap.OnMyLocationButtonClickListener, GoogleApiClient.ConnectionCallbacks, LocationListener {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GeoJsonLayer.GeoJsonOnFeatureClickListener, GoogleMap.OnCameraChangeListener, ActivityCompat.OnRequestPermissionsResultCallback, GoogleMap.OnMyLocationButtonClickListener, GoogleApiClient.ConnectionCallbacks, LocationListener, SeekBar.OnSeekBarChangeListener {
 	private static final String TAG = "MapsActivity";
 	public static final int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 1000;
 	private static final double COORD_ADJUST_AMOUNT = 0.0000003;
 	private static final float DEFAULT_LINE_WIDTH = 10.0f;
 	private static final int DEFAULT_DESIRED_PARK_HOURS = 24;
 	public final static int NO_TIME = Color.RED;
-	public final static int LONG_TIME = Color.GREEN;
 	public final static int NO_DATA = Color.BLACK;
-
 	private final static long PAN_DEBOUNCE_THRESHOLD_MS = 1000;
 
 	private GoogleMap mMap;
 	private Snackbar mSnackbar;
+	private SeekBar mSeekBar;
+	private TextView mTextView;
+
 	private ProgressBar mProgress;
+	private int mDesiredParkHours;
 
 	private GoogleApiClient mGoogleApiClient;
 	private Location mLastLocation;
-	private LocationRequest mLocationRequest;
 
 	private GeoJsonLayer mLayer;
 	private GeoJsonFeature mLastFeatureActive;
+
+	// Aggregate features for same block side
 	private Map<String, List<GeoJsonFeature>> mBlockSideFeaturesLookup;
+	// Feature lookup by unique key
 	private Map<String, GeoJsonFeature> mFeaturesOnMap;
+
 	private FeatureModel mFeatureModel;
-	private long previousCameraPanMs;
+	private double previousCameraPanMs;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_maps);
 		mProgress = (ProgressBar) findViewById(R.id.progress);
+		mSeekBar = (SeekBar) findViewById(R.id.seekBar);
+		mTextView = (TextView) findViewById(R.id.hours_text);
+		mSeekBar.setOnSeekBarChangeListener(this);
+		mBlockSideFeaturesLookup = new HashMap<>();
+		mFeaturesOnMap = new HashMap<>();
+		mFeatureModel = new FeatureModel(this);
 
+		mSeekBar.setProgress(20);
+		previousCameraPanMs = 0;
+		mDesiredParkHours = DEFAULT_DESIRED_PARK_HOURS;
 
+		updateHoursString();
 		// Obtain the SupportMapFragment and get notified when the map is ready to be used.
 		SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
 				.findFragmentById(R.id.map);
 		mapFragment.getMapAsync(this);
-		mBlockSideFeaturesLookup = new HashMap<>();
-		mFeaturesOnMap = new HashMap<>();
-		mFeatureModel = new FeatureModel(this);
-		previousCameraPanMs = 0;
-		if (mGoogleApiClient == null) {
-			mGoogleApiClient = new GoogleApiClient.Builder(this)
-					.addConnectionCallbacks(this)
-					.addApi(LocationServices.API)
-					.build();
-		}
+
+		mGoogleApiClient = new GoogleApiClient.Builder(this)
+				.addConnectionCallbacks(this)
+				.addApi(LocationServices.API)
+				.build();
 	}
 
+	@Override
 	protected void onStart() {
 		mGoogleApiClient.connect();
 		super.onStart();
 	}
 
+	@Override
 	protected void onStop() {
 		mGoogleApiClient.disconnect();
 		super.onStop();
@@ -132,11 +147,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		// Add a marker in sf and move the camera
 		LatLng sf = new LatLng(37.751019, -122.506810);
 		googleMap.setOnCameraChangeListener(this);
+		googleMap.setOnMyLocationButtonClickListener(this);
 //		try {
 //			GeoJsonLayer layer = new GeoJsonLayer(googleMap, R.raw.streetsweep_latlng, this);
 //			mFeatureModel.importAllData(layer);
 //			mFeatureModel.setAllGeos(layer);
-
 			mLayer = new GeoJsonLayer(googleMap, new JSONObject());
 			mLayer.setOnFeatureClickListener(this);
 			mLayer.addLayerToMap();
@@ -162,20 +177,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		}
 		mLastFeatureActive = feature;
 		setFeatureHoverStyle(feature);
+		showSnackBar(feature);
+	}
+
+	private void showSnackBar(GeoJsonFeature feature) {
 		if (mSnackbar == null){
 			mSnackbar = Snackbar.make(findViewById(R.id.map), getToastText(FeatureModel.getUniqueKeyForBlockSide(feature)), Snackbar.LENGTH_INDEFINITE);
 			mSnackbar.show();
 		} else {
 			mSnackbar.setText(getToastText(FeatureModel.getUniqueKeyForBlockSide(feature)));
 		}
-	}
-
-	private void initTheFeatures(GeoJsonLayer layer) {
-		for (GeoJsonFeature feature : layer.getFeatures()) {
-			feature.setGeometry(getAdjustedGeo(feature));
-			addFeatureToLookups(feature);
-		}
-		calcColorsForFeatures(layer);
 	}
 
 	private void initTheFeature(GeoJsonFeature feature){
@@ -241,7 +252,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 					soonest = next;
 				}
 			}
-			return getColor(now, soonest, DEFAULT_DESIRED_PARK_HOURS);
+			return getColor(now, soonest, mDesiredParkHours);
 		}else {
 			Log.e(TAG, "No data for:" + featureKey);
 			return NO_DATA;
@@ -370,26 +381,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		return Color.rgb(0, greenAmt.intValue(), 0);
 	}
 
-	private class AddFeatureToMap extends AsyncTask<GeoJsonFeature, String, String> {
-		@Override
-		protected String doInBackground(GeoJsonFeature ...feature) {
-			initTheFeature(feature[0]);
-			return "";
-		}
-	}
-
 	public void addFeatureToMap(GeoJsonFeature feature){
 		if (!mFeaturesOnMap.containsKey(FeatureModel.getUniqueKey(feature))){
 			initTheFeature(feature);
 			mLayer.addFeature(feature);
 		} else {
 			Log.i(TAG,"tried to add duplicate feature");
-		}
-	}
-
-	private void removeFeaturesFromMap(List<GeoJsonFeature> features) {
-		for (GeoJsonFeature feature: features){
-			removeFeatureFromMap(feature);
 		}
 	}
 
@@ -406,7 +403,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	}
 
 	public void onCameraChange (CameraPosition position) {
-		if ((SystemClock.uptimeMillis() - previousCameraPanMs) > PAN_DEBOUNCE_THRESHOLD_MS){
+		double updatimeMs = SystemClock.uptimeMillis();
+		if ((updatimeMs - previousCameraPanMs) > PAN_DEBOUNCE_THRESHOLD_MS){
+			previousCameraPanMs = updatimeMs;
 			mProgress.setVisibility(View.VISIBLE);
 			mFeatureModel.getFeaturesForPoint(position.target.latitude, position.target.longitude);
 		}
@@ -480,7 +479,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	@Override
 	public void onConnectionSuspended(int val) {
-
 	}
 
 	@Override
@@ -493,15 +491,43 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	}
 
 	private void startLocationUpdates(){
-		mLocationRequest = LocationRequest.create();
-		mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
-		mLocationRequest.setInterval(5000);
+		LocationRequest locationRequest = LocationRequest.create();
+		locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+		locationRequest.setInterval(5000);
 		try{
 			LocationServices.FusedLocationApi.requestLocationUpdates(
-					mGoogleApiClient, mLocationRequest, this);
+					mGoogleApiClient, locationRequest, this);
 		} catch (SecurityException e) {
 			Log.i(TAG, "did not provide location permissions");
 		}
 
+	}
+
+	@Override
+	public void onStartTrackingTouch(SeekBar seekBar){
+	}
+
+	@Override
+	public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser){
+		int newHours = (int) Math.round(progress * 1.2);
+		if (newHours == 0) {
+			newHours = 1;
+		}
+		mDesiredParkHours = newHours;
+		updateHoursString();
+	}
+
+	@Override
+	public void onStopTrackingTouch(SeekBar seekBar){
+		mProgress.setVisibility(View.VISIBLE);
+		calcColorsForFeatures();
+	}
+
+	private void updateHoursString(){
+		mTextView.setText(
+				Html.fromHtml(
+				getString(R.string.hours_desc, mDesiredParkHours)
+				)
+		);
 	}
 }
