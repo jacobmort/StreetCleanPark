@@ -1,6 +1,7 @@
 package porqueno.streetcleanpark;
 
 import android.graphics.Color;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.support.design.widget.Snackbar;
@@ -38,6 +39,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	public final static int NO_TIME = Color.RED;
 	public final static int LONG_TIME = Color.GREEN;
 	public final static int NO_DATA = Color.BLACK;
+
 	private final static long PAN_DEBOUNCE_THRESHOLD_MS = 1000;
 
 	private GoogleMap mMap;
@@ -285,7 +287,26 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		if (hoursDiff < desiredHoursToPark) {
 			return NO_TIME;
 		} else {
-			return LONG_TIME;
+			return getColorForGoodStreet(hoursDiff, desiredHoursToPark);
+		}
+	}
+
+	public static int getColorForGoodStreet(long hoursDiff, int desiredHoursToPark) {
+		double ratio = hoursDiff / (desiredHoursToPark * 2);
+		Double greenAmt = 255 * ratio;
+		if (greenAmt > 255){
+			greenAmt = 255d;
+		} else if (greenAmt < 100){
+			greenAmt = 100d;
+		}
+		return Color.rgb(0, greenAmt.intValue(), 0);
+	}
+
+	private class AddFeatureToMap extends AsyncTask<GeoJsonFeature, String, String> {
+		@Override
+		protected String doInBackground(GeoJsonFeature ...feature) {
+			initTheFeature(feature[0]);
+			return "";
 		}
 	}
 
