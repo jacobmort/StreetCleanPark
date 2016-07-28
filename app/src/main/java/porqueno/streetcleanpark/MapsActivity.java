@@ -8,6 +8,8 @@ import android.support.design.widget.Snackbar;
 import android.support.v4.app.FragmentActivity;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.View;
+import android.widget.ProgressBar;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -43,9 +45,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	private final static long PAN_DEBOUNCE_THRESHOLD_MS = 1000;
 
 	private GoogleMap mMap;
+	private Snackbar mSnackbar;
+	private ProgressBar mProgress;
+
 	private GeoJsonLayer mLayer;
 	private GeoJsonFeature mLastFeatureActive;
-	private Snackbar mSnackbar;
 	private Map<String, List<GeoJsonFeature>> mBlockSideFeaturesLookup;
 	private FeatureModel mFeatureModel;
 	private long previousCameraPanMs;
@@ -54,6 +58,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_maps);
+		mProgress = (ProgressBar) findViewById(R.id.progress);
+
+
 		// Obtain the SupportMapFragment and get notified when the map is ready to be used.
 		SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
 				.findFragmentById(R.id.map);
@@ -130,6 +137,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		for (GeoJsonFeature feature : layer.getFeatures()) {
 			setFeatureColor(feature, calculateColorForFeature(FeatureModel.getUniqueKeyForBlockSide(feature)));
 		}
+		mProgress.setVisibility(View.INVISIBLE);
 	}
 
 	private void addFeatureToLookup(GeoJsonFeature feature) {
@@ -311,8 +319,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	}
 
 	public void addFeatureToMap(GeoJsonFeature feature){
-		mLayer.addFeature(feature);
 		initTheFeature(feature);
+		mLayer.addFeature(feature);
 	}
 
 	private void removeFeaturesFromMap(List<GeoJsonFeature> features) {
@@ -329,6 +337,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	public void onCameraChange (CameraPosition position) {
 		if ((SystemClock.uptimeMillis() - previousCameraPanMs) > PAN_DEBOUNCE_THRESHOLD_MS){
+			mProgress.setVisibility(View.VISIBLE);
 			mFeatureModel.getFeaturesForPoint(position.target.latitude, position.target.longitude);
 		}
 	}
