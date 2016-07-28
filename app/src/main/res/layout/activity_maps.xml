@@ -26,7 +26,10 @@
             android:id="@+id/hours_text"
             android:layout_gravity="center_horizontal|top"
             android:gravity="center_horizontal"
-            android:paddingTop="10dp"/>
+            android:paddingTop="10dp"
+            android:background="@color/backgroundOverlay"
+            android:paddingLeft="20dp"
+            android:paddingRight="20dp"/>
         <SeekBar
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -34,7 +37,8 @@
             android:layout_gravity="center_horizontal|top"
             android:max="120"
             android:contextClickable="true"
-            />
+            android:background="@color/backgroundOverlay"
+            android:paddingBottom="20dp"/>
     </LinearLayout>
     <ProgressBar android:id="@+id/progress"
                  android:layout_width="wrap_content"
