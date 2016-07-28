@@ -25,7 +25,8 @@
             android:text="@string/hours_desc"
             android:id="@+id/hours_text"
             android:layout_gravity="center_horizontal|top"
-            android:gravity="center_horizontal"/>
+            android:gravity="center_horizontal"
+            android:paddingTop="10dp"/>
         <SeekBar
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -10,6 +10,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
 import android.text.Html;
+import android.text.Spanned;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
@@ -524,10 +525,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	}
 
 	private void updateHoursString(){
-		mTextView.setText(
-				Html.fromHtml(
-				getString(R.string.hours_desc, mDesiredParkHours)
-				)
-		);
+		// TODO couldn't get this to work via string xml value
+		String text = "I want to park for <b><big>" + mDesiredParkHours + "</big></b> hours";
+		Spanned result;
+
+		if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+			result = Html.fromHtml(text ,Html.FROM_HTML_MODE_LEGACY);
+		} else {
+			result = Html.fromHtml(text);
+		}
+		mTextView.setText(result);
 	}
 }
