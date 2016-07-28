@@ -2,6 +2,7 @@ package porqueno.streetcleanpark;
 
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.location.Location;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -14,6 +15,9 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ProgressBar;
 
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -24,7 +28,7 @@ import com.google.maps.android.geojson.GeoJsonFeature;
 import com.google.maps.android.geojson.GeoJsonLayer;
 import com.google.maps.android.geojson.GeoJsonLineString;
 import com.google.maps.android.geojson.GeoJsonLineStringStyle;
-
+import com.google.android.gms.location.LocationListener;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -36,7 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GeoJsonLayer.GeoJsonOnFeatureClickListener, GoogleMap.OnCameraChangeListener, ActivityCompat.OnRequestPermissionsResultCallback, GoogleMap.OnMyLocationButtonClickListener  {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GeoJsonLayer.GeoJsonOnFeatureClickListener, GoogleMap.OnCameraChangeListener, ActivityCompat.OnRequestPermissionsResultCallback, GoogleMap.OnMyLocationButtonClickListener, GoogleApiClient.ConnectionCallbacks, LocationListener {
 	private static final String TAG = "MapsActivity";
 	public static final int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 1000;
 	private static final double COORD_ADJUST_AMOUNT = 0.0000003;
@@ -52,9 +56,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	private Snackbar mSnackbar;
 	private ProgressBar mProgress;
 
+	private GoogleApiClient mGoogleApiClient;
+	private Location mLastLocation;
+	private LocationRequest mLocationRequest;
+
 	private GeoJsonLayer mLayer;
 	private GeoJsonFeature mLastFeatureActive;
 	private Map<String, List<GeoJsonFeature>> mBlockSideFeaturesLookup;
+	private Map<String, GeoJsonFeature> mFeaturesOnMap;
 	private FeatureModel mFeatureModel;
 	private long previousCameraPanMs;
 
@@ -70,8 +79,42 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 				.findFragmentById(R.id.map);
 		mapFragment.getMapAsync(this);
 		mBlockSideFeaturesLookup = new HashMap<>();
+		mFeaturesOnMap = new HashMap<>();
 		mFeatureModel = new FeatureModel(this);
 		previousCameraPanMs = 0;
+		if (mGoogleApiClient == null) {
+			mGoogleApiClient = new GoogleApiClient.Builder(this)
+					.addConnectionCallbacks(this)
+					.addApi(LocationServices.API)
+					.build();
+		}
+	}
+
+	protected void onStart() {
+		mGoogleApiClient.connect();
+		super.onStart();
+	}
+
+	protected void onStop() {
+		mGoogleApiClient.disconnect();
+		super.onStop();
+	}
+
+	@Override
+	protected void onPause() {
+		super.onPause();
+		if (mGoogleApiClient.isConnected()) {
+			LocationServices.FusedLocationApi.removeLocationUpdates(
+					mGoogleApiClient, this);
+		}
+	}
+
+	@Override
+	public void onResume() {
+		super.onResume();
+		if (mGoogleApiClient.isConnected()) {
+			startLocationUpdates();
+		}
 	}
 
 	/**
@@ -99,6 +142,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 			mLayer.addLayerToMap();
 			mMap.moveCamera(CameraUpdateFactory.newLatLng(sf));
 			mMap.animateCamera( CameraUpdateFactory.zoomTo( 17.0f ) );
+//		} catch (java.io.IOException e) {
+//			e.printStackTrace();
+//		} catch (org.json.JSONException e) {
+//			e.printStackTrace();
+//		}
 		if (ContextCompat.checkSelfPermission(this,
 				android.Manifest.permission.ACCESS_COARSE_LOCATION)
 				!= PackageManager.PERMISSION_GRANTED) {
@@ -106,12 +154,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		}else {
 			mMap.setMyLocationEnabled(true);
 		}
-
-//		} catch (java.io.IOException e) {
-//			e.printStackTrace();
-//		} catch (org.json.JSONException e) {
-//			e.printStackTrace();
-//		}
 	}
 
 	public void onFeatureClick(GeoJsonFeature feature) {
@@ -131,14 +173,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	private void initTheFeatures(GeoJsonLayer layer) {
 		for (GeoJsonFeature feature : layer.getFeatures()) {
 			feature.setGeometry(getAdjustedGeo(feature));
-			addFeatureToLookup(feature);
+			addFeatureToLookups(feature);
 		}
 		calcColorsForFeatures(layer);
 	}
 
 	private void initTheFeature(GeoJsonFeature feature){
 		feature.setGeometry(getAdjustedGeo(feature));
-		addFeatureToLookup(feature);
+		addFeatureToLookups(feature);
 	}
 
 	public void calcColorsForFeatures() {
@@ -156,7 +198,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		mProgress.setVisibility(View.INVISIBLE);
 	}
 
-	private void addFeatureToLookup(GeoJsonFeature feature) {
+	private void addFeatureToLookups(GeoJsonFeature feature) {
 		String key = FeatureModel.getUniqueKeyForBlockSide(feature);
 		List<GeoJsonFeature> blockSideData = mBlockSideFeaturesLookup.get(key);
 		if (blockSideData == null) {
@@ -164,6 +206,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		}
 		blockSideData.add(feature);
 		mBlockSideFeaturesLookup.put(key, blockSideData);
+		mFeaturesOnMap.put(FeatureModel.getUniqueKey(feature), feature);
 	}
 	
 	private void setFeatureColor(GeoJsonFeature feature, int color) {
@@ -336,19 +379,29 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	}
 
 	public void addFeatureToMap(GeoJsonFeature feature){
-		initTheFeature(feature);
-		mLayer.addFeature(feature);
+		if (!mFeaturesOnMap.containsKey(FeatureModel.getUniqueKey(feature))){
+			initTheFeature(feature);
+			mLayer.addFeature(feature);
+		} else {
+			Log.i(TAG,"tried to add duplicate feature");
+		}
 	}
 
 	private void removeFeaturesFromMap(List<GeoJsonFeature> features) {
 		for (GeoJsonFeature feature: features){
-			mLayer.removeFeature(feature);
+			removeFeatureFromMap(feature);
 		}
 	}
 
+	private void removeFeatureFromMap(GeoJsonFeature feature) {
+		mLayer.removeFeature(feature);
+		mBlockSideFeaturesLookup.remove(FeatureModel.getUniqueKeyForBlockSide(feature));
+		mFeaturesOnMap.remove(FeatureModel.getUniqueKey(feature));
+	}
+
 	public void removeFeatureFromMap(String key) {
-		if (mBlockSideFeaturesLookup.containsKey(key)){
-			removeFeaturesFromMap(mBlockSideFeaturesLookup.get(key));
+		if (mFeaturesOnMap.containsKey(key)){
+			removeFeatureFromMap(mFeaturesOnMap.get(key));
 		}
 	}
 
@@ -406,5 +459,49 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	@Override
 	public boolean onMyLocationButtonClick() {
 		return false; // Let maps handle it
+	}
+
+	@Override
+	public void onConnected(Bundle connectionHint) {
+		startLocationUpdates();
+		try {
+			mLastLocation = LocationServices.FusedLocationApi.getLastLocation(
+					mGoogleApiClient);
+		} catch (SecurityException e){
+			Log.i(TAG, "location permissions not accepted");
+		}
+
+		if (mLastLocation != null) {
+			mMap.moveCamera(CameraUpdateFactory.newLatLng(
+					new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude())
+			));
+		}
+	}
+
+	@Override
+	public void onConnectionSuspended(int val) {
+
+	}
+
+	@Override
+	public void onLocationChanged(Location location) {
+		mLastLocation = location;
+		mMap.moveCamera(CameraUpdateFactory.newLatLng(
+				new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude())
+		));
+		mMap.animateCamera( CameraUpdateFactory.zoomTo( 17.0f ) );
+	}
+
+	private void startLocationUpdates(){
+		mLocationRequest = LocationRequest.create();
+		mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+		mLocationRequest.setInterval(5000);
+		try{
+			LocationServices.FusedLocationApi.requestLocationUpdates(
+					mGoogleApiClient, mLocationRequest, this);
+		} catch (SecurityException e) {
+			Log.i(TAG, "did not provide location permissions");
+		}
+
 	}
 }

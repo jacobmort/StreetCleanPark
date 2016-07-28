@@ -41,8 +41,12 @@ import porqueno.streetcleanpark.serialize.GeoJsonPolygonStyleSerializer;
 /**
  * Created by jacob on 7/26/16.
  */
-public class FeatureModel implements GeoQueryEventListener, ValueEventListener {
+public class FeatureModel implements GeoQueryEventListener, ValueEventListener, GeoFire.CompletionListener {
 	private static final String TAG = "FeatureModel";
+	private static final String CLEANING_DATA_REF = "cleaning";
+	private static final String GEOFIRE_DATA_REF = "geofire";
+
+
 	private FirebaseDatabase mDatabase;
 	private GeoFire mGeoFire;
 	private GeoQuery mGeoQuery;
@@ -52,7 +56,7 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener {
 
 	FeatureModel(MapsActivity mainActivity) {
 		mDatabase = FirebaseDatabase.getInstance();
-		mGeoFire = new GeoFire(mDatabase.getReference("geofire"));
+		mGeoFire = new GeoFire(mDatabase.getReference(GEOFIRE_DATA_REF));
 		mActivity = mainActivity;
 		mNearbyFeatures = new ArrayList<>();
 		outstandingRequests = new AtomicInteger();
@@ -62,8 +66,8 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener {
 		DatabaseReference featureRef;
 		for (GeoJsonFeature feature : layer.getFeatures()) {
 			String json = serialize(feature);
-			String key = getUniqueKeyForBlockSide(feature);
-			featureRef = mDatabase.getReference(key);
+			String key = getUniqueKey(feature);
+			featureRef = mDatabase.getReference(getCleaningDataKey(key));
 			featureRef.setValue(json);
 		}
 	}
@@ -73,9 +77,15 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener {
 			GeoJsonLineString geo = (GeoJsonLineString) feature.getGeometry();
 			List<LatLng> points = geo.getCoordinates();
 			for (LatLng point: points) {
-				mGeoFire.setLocation(getUniqueKeyForBlockSide(feature), new GeoLocation(point.latitude, point.longitude));
+				mGeoFire.setLocation(
+						getUniqueKey(feature), new GeoLocation(point.latitude, point.longitude),
+						this);
 			}
 		}
+	}
+
+	public static String getCleaningDataKey(String key){
+		return CLEANING_DATA_REF + "/" + key;
 	}
 
 	public void getFeaturesForPoint(double lat, double lng) {
@@ -94,11 +104,11 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener {
 
 	public void addValueListener(String key){
 		outstandingRequests.incrementAndGet();
-		mDatabase.getReference(key).addValueEventListener(this);
+		mDatabase.getReference(getCleaningDataKey(key)).addValueEventListener(this);
 	}
 
 	public void removeValueListener(String key) {
-		mDatabase.getReference(key).removeEventListener(this);
+		mDatabase.getReference(getCleaningDataKey(key)).removeEventListener(this);
 		mActivity.removeFeatureFromMap(key);
 	}
 
@@ -150,6 +160,15 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener {
 		outstandingRequests.decrementAndGet();
 		Log.w(TAG, "Failed to read value.", databaseError.toException());
 	}
+
+	@Override
+	public void onComplete(String databaseError, DatabaseError error) {
+		if (error != null) {
+			System.err.println("There was an error saving the location to GeoFire: " + error);
+		}
+	}
+
+	//////////////////////// Utility methods
 
 	public static int getWeekday(GeoJsonFeature feature) {
 		String weekday =  feature.getProperty("WEEKDAY");
@@ -217,8 +236,12 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener {
 		return Integer.parseInt(time.substring(3, 5));
 	}
 
+	public static String getUniqueKey(GeoJsonFeature feature){
+		return feature.getProperty("BLOCKSWEEP");
+	}
+
 	public static String getUniqueKeyForBlockSide(GeoJsonFeature feature) {
-		return feature.getProperty("CNN") + "-" + feature.getProperty("BLOCKSIDE");
+		return feature.getProperty("CNN") + "_" + feature.getProperty("BLOCKSIDE");
 	}
 
 	public static Map<String,List<GeoJsonFeature>> clusterFeaturesByDay(List<GeoJsonFeature> features) {
