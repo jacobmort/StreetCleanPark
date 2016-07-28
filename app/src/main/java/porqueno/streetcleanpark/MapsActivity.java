@@ -131,12 +131,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	public void calcColorsForFeatures() {
 		calcColorsForFeatures(mLayer);
+		hideProgressBar();
 	}
 
 	private void calcColorsForFeatures(GeoJsonLayer layer) {
 		for (GeoJsonFeature feature : layer.getFeatures()) {
 			setFeatureColor(feature, calculateColorForFeature(FeatureModel.getUniqueKeyForBlockSide(feature)));
 		}
+	}
+
+	public void hideProgressBar() {
 		mProgress.setVisibility(View.INVISIBLE);
 	}
 
@@ -154,6 +158,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		GeoJsonLineStringStyle lineStyle = new GeoJsonLineStringStyle();
 		lineStyle.setColor(color);
 		feature.setLineStringStyle(lineStyle);
+		feature.notifyObservers();
 	}
 
 	private int calculateColorForFeature(String featureKey) {

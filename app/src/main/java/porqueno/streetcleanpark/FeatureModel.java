@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import porqueno.streetcleanpark.serialize.GeoJsonFeatureInstanceCreator;
 import porqueno.streetcleanpark.serialize.GeoJsonGeometryDeserializer;
@@ -47,14 +48,14 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener {
 	private GeoQuery mGeoQuery;
 	private MapsActivity mActivity; // Make sure model dies with this activity otherwise leak memory
 	private List<GeoJsonFeature> mNearbyFeatures;
-	private int outstandingRequests;
+	private AtomicInteger outstandingRequests;
 
 	FeatureModel(MapsActivity mainActivity) {
 		mDatabase = FirebaseDatabase.getInstance();
 		mGeoFire = new GeoFire(mDatabase.getReference("geofire"));
 		mActivity = mainActivity;
 		mNearbyFeatures = new ArrayList<>();
-		outstandingRequests = 0;
+		outstandingRequests = new AtomicInteger();
 	}
 
 	public void importAllData(GeoJsonLayer layer) {
@@ -78,7 +79,7 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener {
 	}
 
 	public void getFeaturesForPoint(double lat, double lng) {
-		outstandingRequests = 0;
+		outstandingRequests.set(0);
 		if (mGeoQuery == null) {
 			setupGeoQuery(lat, lng);
 		} else {
@@ -92,7 +93,7 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener {
 	}
 
 	public void addValueListener(String key){
-		outstandingRequests += 1;
+		outstandingRequests.incrementAndGet();
 		mDatabase.getReference(key).addValueEventListener(this);
 	}
 
@@ -103,13 +104,11 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener {
 
 	@Override
 	public void onKeyEntered(String key, GeoLocation location) {
-		System.out.println(String.format("Key %s entered the search area at [%f,%f]", key, location.latitude, location.longitude));
 		addValueListener(key);
 	}
 
 	@Override
 	public void onKeyExited(String key) {
-		System.out.println(String.format("Key %s is no longer in the search area", key));
 		removeValueListener(key);
 	}
 
@@ -121,6 +120,10 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener {
 	@Override
 	public void onGeoQueryReady() {
 		System.out.println("All initial data has been loaded and events have been fired!");
+		if (outstandingRequests.get() == 0){
+			// When zooming on map we won't get new points/onDataChange event
+			mActivity.hideProgressBar();
+		}
 	}
 
 	@Override
@@ -130,10 +133,13 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener {
 
 	@Override
 	public void onDataChange(DataSnapshot dataSnapshot) {
-		outstandingRequests -= 1;
+		outstandingRequests.decrementAndGet();
+		if (outstandingRequests.get() < 0){
+			outstandingRequests.set(0);
+		}
 		GeoJsonFeature feature = deserialize(dataSnapshot.getValue(String.class));
 		mActivity.addFeatureToMap(feature);
-		if (outstandingRequests == 0){
+		if (outstandingRequests.get() == 0){
 			// We have all data, we can now iterate to calc colors
 			mActivity.calcColorsForFeatures();
 		}
@@ -141,7 +147,7 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener {
 
 	@Override
 	public void onCancelled(DatabaseError databaseError) {
-		outstandingRequests -= 1;
+		outstandingRequests.decrementAndGet();
 		Log.w(TAG, "Failed to read value.", databaseError.toException());
 	}
 
