@@ -1,11 +1,14 @@
 package porqueno.streetcleanpark;
 
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
+import android.support.v4.content.ContextCompat;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
@@ -33,8 +36,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GeoJsonLayer.GeoJsonOnFeatureClickListener, GoogleMap.OnCameraChangeListener {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GeoJsonLayer.GeoJsonOnFeatureClickListener, GoogleMap.OnCameraChangeListener, ActivityCompat.OnRequestPermissionsResultCallback, GoogleMap.OnMyLocationButtonClickListener  {
 	private static final String TAG = "MapsActivity";
+	public static final int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 1000;
 	private static final double COORD_ADJUST_AMOUNT = 0.0000003;
 	private static final float DEFAULT_LINE_WIDTH = 10.0f;
 	private static final int DEFAULT_DESIRED_PARK_HOURS = 24;
@@ -95,6 +99,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 			mLayer.addLayerToMap();
 			mMap.moveCamera(CameraUpdateFactory.newLatLng(sf));
 			mMap.animateCamera( CameraUpdateFactory.zoomTo( 17.0f ) );
+		if (ContextCompat.checkSelfPermission(this,
+				android.Manifest.permission.ACCESS_COARSE_LOCATION)
+				!= PackageManager.PERMISSION_GRANTED) {
+			promptForLocationPermissions();
+		}else {
+			mMap.setMyLocationEnabled(true);
+		}
+
 //		} catch (java.io.IOException e) {
 //			e.printStackTrace();
 //		} catch (org.json.JSONException e) {
@@ -345,5 +357,54 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 			mProgress.setVisibility(View.VISIBLE);
 			mFeatureModel.getFeaturesForPoint(position.target.latitude, position.target.longitude);
 		}
+	}
+
+	public void promptForLocationPermissions() {
+		if (ContextCompat.checkSelfPermission(this,
+				android.Manifest.permission.ACCESS_COARSE_LOCATION)
+				!= PackageManager.PERMISSION_GRANTED) {
+
+			if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+					android.Manifest.permission.ACCESS_COARSE_LOCATION)) {
+				mSnackbar.show();
+				Snackbar.make(findViewById(R.id.map), "If you would like the map to follow you grant location permissions",
+						Snackbar.LENGTH_SHORT).setAction("OK", new View.OnClickListener() {
+					@Override
+					public void onClick(View view) {
+						// Request the permission
+						ActivityCompat.requestPermissions(MapsActivity.this,
+								new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION},
+								MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION);
+					}
+				}).show();
+			} else {
+				ActivityCompat.requestPermissions(this,
+						new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION},
+						MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION);
+			}
+		}
+	}
+
+	@Override
+	public void onRequestPermissionsResult(int requestCode,
+										   String permissions[], int[] grantResults) {
+		switch (requestCode) {
+			case MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION: {
+				// If request is cancelled, the result arrays are empty.
+				if (grantResults.length > 0
+						&& grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+					try{
+						mMap.setMyLocationEnabled(true);
+					} catch (SecurityException e){
+						Log.w(TAG, "Granted location permissions but don't have somehow");
+					}
+				}
+			}
+		}
+	}
+
+	@Override
+	public boolean onMyLocationButtonClick() {
+		return false; // Let maps handle it
 	}
 }
