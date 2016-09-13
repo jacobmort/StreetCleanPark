@@ -10,8 +10,6 @@ import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
-import android.text.Html;
-import android.text.Spanned;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
@@ -68,7 +66,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	private GeoJsonLayer mLayer;
 	private GeoJsonFeature mLastFeatureActive;
 
-	// Aggregate features for same block side
+	// Aggregate features by same block side
 	private Map<String, List<GeoJsonFeature>> mBlockSideFeaturesLookup;
 	// Feature lookup by unique key
 	private Map<String, GeoJsonFeature> mFeaturesOnMap;
@@ -81,15 +79,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		super.onCreate(savedInstanceState);
 		mBinding = DataBindingUtil.setContentView(this, R.layout.maps_activity);
 		mBinding.seekBar.setOnSeekBarChangeListener(this);
+		mBinding.seekBar.setProgress(20);
+
+		mDesiredParkHours = DEFAULT_DESIRED_PARK_HOURS;
 		mBlockSideFeaturesLookup = new HashMap<>();
 		mFeaturesOnMap = new HashMap<>();
 		mFeatureModel = new FeatureModel(this);
-
-		mBinding.seekBar.setProgress(20);
 		previousCameraPanMs = 0;
-		mDesiredParkHours = DEFAULT_DESIRED_PARK_HOURS;
+		mBinding.setHoursToPark(String.valueOf(mDesiredParkHours));
 
-		updateHoursString();
 		// Obtain the SupportMapFragment and get notified when the map is ready to be used.
 		SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
 				.findFragmentById(R.id.map);
@@ -512,25 +510,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 			newHours = 1;
 		}
 		mDesiredParkHours = newHours;
-		updateHoursString();
+		mBinding.setHoursToPark(String.valueOf(mDesiredParkHours));
 	}
 
 	@Override
 	public void onStopTrackingTouch(SeekBar seekBar){
 		mBinding.progress.setVisibility(View.VISIBLE);
 		calcColorsForFeatures();
-	}
-
-	private void updateHoursString(){
-		// TODO couldn't get this to work via string xml value
-		String text = "I want to park for <b><big>" + mDesiredParkHours + "</big></b> hours";
-		Spanned result;
-
-		if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-			result = Html.fromHtml(text ,Html.FROM_HTML_MODE_LEGACY);
-		} else {
-			result = Html.fromHtml(text);
-		}
-		mBinding.hoursText.setText(result);
 	}
 }

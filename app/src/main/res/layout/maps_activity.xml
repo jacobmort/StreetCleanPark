@@ -4,6 +4,7 @@
         tools:context="porqueno.streetcleanpark.MapsActivity"
     >
     <data>
+        <variable name="hoursToPark" type="String" />
     </data>
     <FrameLayout
         android:layout_width="match_parent"
@@ -11,7 +12,6 @@
         >
         <fragment android:id="@+id/map"
               android:name="com.google.android.gms.maps.SupportMapFragment"
-              xmlns:map="http://schemas.android.com/apk/res-auto"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
         >
@@ -21,19 +21,39 @@
             android:layout_height="match_parent"
             android:orientation="vertical"
             android:weightSum="0.7"
-            android:layout_gravity="center_horizontal">
-            <TextView
+            android:layout_gravity="center_horizontal"
+            >
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textAppearance="?android:attr/textAppearanceMedium"
-                android:text="@string/hours_desc"
-                android:id="@+id/hours_text"
-                android:layout_gravity="center_horizontal|top"
-                android:gravity="center_horizontal"
-                android:paddingTop="10dp"
+                android:orientation="horizontal"
                 android:background="@color/backgroundOverlay"
-                android:paddingLeft="20dp"
-                android:paddingRight="20dp"/>
+                android:layout_gravity="center_horizontal"
+                android:paddingTop="10dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?android:attr/textAppearanceMedium"
+                    android:text="@string/hours_desc"
+                    android:id="@+id/hours_text"
+                    android:layout_gravity="center_horizontal|top"
+                    android:gravity="center_horizontal"
+                    android:paddingEnd="5dp"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@{hoursToPark}"
+                    android:textAppearance="?android:attr/textAppearanceLarge"
+                    android:minEms="2"
+                    />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/hours"
+                    android:textAppearance="?android:attr/textAppearanceMedium"/>
+            </LinearLayout>
             <SeekBar
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
