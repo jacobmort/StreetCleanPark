@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Created by jacob on 7/20/16.
  */
-public class TimeHelper {
+class TimeHelper {
 	public static Calendar getNextOccurrence(
 			Calendar now,
 			int cleaningWeekday,
@@ -39,7 +39,7 @@ public class TimeHelper {
 	){
 		if (daysDiff < 0) {
 			// We're past the day of week where cleaning happened
-			now = advanceDayToNextWeek(now, cleaningWeekday);
+			advanceDayToNextWeek(now, cleaningWeekday);
 		} else if (daysDiff > 0) {
 			// Cleaning has yet to happen this week
 			now.add(Calendar.DAY_OF_YEAR, daysDiff);
@@ -47,12 +47,12 @@ public class TimeHelper {
 			// We're in today
 			if (startHour > endHour) { // Loops around till the next day
 				if (!isTimePast(now, startHour, startMinute)) {
-					now = advanceDayToNextWeek(now, cleaningWeekday);
+					advanceDayToNextWeek(now, cleaningWeekday);
 				}
 			} else {
 				// Already happened today
 				if (isTimePast(now, endHour, endMinute)) {
-					now = advanceDayToNextWeek(now, cleaningWeekday);
+					advanceDayToNextWeek(now, cleaningWeekday);
 				}
 			}
 		}
@@ -64,19 +64,13 @@ public class TimeHelper {
 
 	private static boolean isTimePast(Calendar time, int hour, int minute) {
 		int timeHour = time.get(Calendar.HOUR_OF_DAY);
-		if (timeHour > hour) {
-			return true;
-		} else if (timeHour == hour && time.get(Calendar.MINUTE) >= minute) {
-			return true;
-		} else {
-			return false;
-		}
+		return (timeHour > hour ||
+				(timeHour == hour && time.get(Calendar.MINUTE) >= minute));
 	}
 
-	private static Calendar advanceDayToNextWeek(Calendar now, int desiredWeekday) {
+	private static void advanceDayToNextWeek(Calendar now, int desiredWeekday) {
 		int days = 7 - Math.abs(now.get(Calendar.DAY_OF_WEEK) - desiredWeekday);
 		now.add(Calendar.DAY_OF_YEAR, days);
-		return now;
 	}
 
 	private static void advanceDayToNextCleaning(
@@ -89,16 +83,16 @@ public class TimeHelper {
 		int weekOfMonth = now.get(Calendar.DAY_OF_WEEK_IN_MONTH);
 		if (weekOfMonth == 1 && !cleanWeekOne){
 			advanceDayToNextWeek(now, now.get(Calendar.DAY_OF_WEEK));
-			advanceDayToNextCleaning(now, cleanWeekOne, cleanWeekTwo, cleanWeekThree, cleanWeekFour);
+			advanceDayToNextCleaning(now, false, cleanWeekTwo, cleanWeekThree, cleanWeekFour);
 		} else if (weekOfMonth == 2 && !cleanWeekTwo){
 			advanceDayToNextWeek(now, now.get(Calendar.DAY_OF_WEEK));
-			advanceDayToNextCleaning(now, cleanWeekOne, cleanWeekTwo, cleanWeekThree, cleanWeekFour);
+			advanceDayToNextCleaning(now, cleanWeekOne, false, cleanWeekThree, cleanWeekFour);
 		} else if (weekOfMonth == 3 && !cleanWeekThree){
 			advanceDayToNextWeek(now, now.get(Calendar.DAY_OF_WEEK));
-			advanceDayToNextCleaning(now, cleanWeekOne, cleanWeekTwo, cleanWeekThree, cleanWeekFour);
+			advanceDayToNextCleaning(now, cleanWeekOne, cleanWeekTwo, false, cleanWeekFour);
 		} else if (weekOfMonth == 4 && !cleanWeekFour){
 			advanceDayToNextWeek(now, now.get(Calendar.DAY_OF_WEEK));
-			advanceDayToNextCleaning(now, cleanWeekOne, cleanWeekTwo, cleanWeekThree, cleanWeekFour);
+			advanceDayToNextCleaning(now, cleanWeekOne, cleanWeekTwo, cleanWeekThree, false);
 		}
 	}
 }

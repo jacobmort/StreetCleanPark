@@ -16,13 +16,13 @@ import java.util.Map;
 /**
  * Created by jacob on 9/12/16.
  */
-public class GeoJsonFeatures {
+class GeoJsonFeatures {
 	private static final String TAG = "GeoJsonFeatures";
 	private static final double COORD_ADJUST_AMOUNT = 0.0000003;
-	public final static int NO_TIME = Color.RED;
-	public final static int NO_DATA = Color.BLACK;
-	public final static double MAX_COLOR_AMT = 255d;
-	public final static double MIN_COLOR_AMT = 100d;
+	private final static int NO_TIME = Color.RED;
+	private final static int NO_DATA = Color.BLACK;
+	private final static double MAX_COLOR_AMT = 255d;
+	private final static double MIN_COLOR_AMT = 100d;
 	// Aggregate features by same block side
 	private Map<String, List<GeoJsonFeature>> mBlockSideFeaturesLookup;
 	// Feature lookup by unique key
@@ -33,7 +33,7 @@ public class GeoJsonFeatures {
 		mFeaturesLookup = new HashMap<>();
 	}
 
-	public void addFeatureToLookups(GeoJsonFeature feature) {
+	private void addFeatureToLookups(GeoJsonFeature feature) {
 		String blockSideKey = FeatureModel.getUniqueKeyForBlockSide(feature);
 		List<GeoJsonFeature> blockSideData = mBlockSideFeaturesLookup.get(blockSideKey);
 		if (blockSideData == null) {
@@ -58,7 +58,7 @@ public class GeoJsonFeatures {
 		);
 	}
 
-	public void removeBlockSideFeature(GeoJsonFeature feature){
+	private void removeBlockSideFeature(GeoJsonFeature feature){
 		mBlockSideFeaturesLookup.remove(
 				FeatureModel.getUniqueKeyForBlockSide(feature)
 		);
@@ -79,13 +79,13 @@ public class GeoJsonFeatures {
 		return mFeaturesLookup.containsKey(uniqueFeatureKey);
 	}
 
-	public void removeFeatureFromLookup(GeoJsonFeature feature) {
+	private void removeFeatureFromLookup(GeoJsonFeature feature) {
 		mFeaturesLookup.remove(
 				FeatureModel.getUniqueKey(feature)
 		);
 	}
 
-	public static GeoJsonLineString getAdjustedGeo(GeoJsonFeature feature) {
+	private static GeoJsonLineString getAdjustedGeo(GeoJsonFeature feature) {
 		String side = feature.getProperty("BLOCKSIDE");
 		GeoJsonLineString geo = (GeoJsonLineString) feature.getGeometry();
 		List<LatLng> points = geo.getCoordinates();
@@ -165,7 +165,7 @@ public class GeoJsonFeatures {
 		}
 	}
 
-	public static int getColor(Calendar now, Calendar then, int desiredHoursToPark) {
+	private static int getColor(Calendar now, Calendar then, int desiredHoursToPark) {
 		long hoursDiff = TimeHelper.getHoursDiff(now, then);
 		if (hoursDiff < desiredHoursToPark) {
 			return NO_TIME;
@@ -174,7 +174,7 @@ public class GeoJsonFeatures {
 		}
 	}
 
-	public static int getColorForGoodStreet(long hoursDiff, int desiredHoursToPark) {
+	private static int getColorForGoodStreet(long hoursDiff, int desiredHoursToPark) {
 		double ratio = hoursDiff / (desiredHoursToPark * 2);
 		Double greenAmt = MAX_COLOR_AMT * ratio;
 		if (greenAmt > MAX_COLOR_AMT){

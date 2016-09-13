@@ -40,6 +40,7 @@
                     android:id="@+id/hours_text"
                     android:layout_gravity="center_horizontal|top"
                     android:gravity="center_horizontal"
+                    android:paddingStart="0dp"
                     android:paddingEnd="5dp"/>
                 <TextView
                     android:layout_width="wrap_content"

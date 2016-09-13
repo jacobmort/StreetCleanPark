@@ -41,8 +41,9 @@ import porqueno.streetcleanpark.serialize.GeoJsonPolygonStyleSerializer;
 
 /**
  * Created by jacob on 7/26/16.
+ * Firebase DB model
  */
-public class FeatureModel implements GeoQueryEventListener, ValueEventListener, GeoFire.CompletionListener {
+class FeatureModel implements GeoQueryEventListener, ValueEventListener, GeoFire.CompletionListener {
 	private static final String TAG = "FeatureModel";
 	private static final String CLEANING_DATA_REF = "cleaning";
 	private static final String GEOFIRE_DATA_REF = "geofire";
@@ -60,7 +61,7 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener, 
 		outstandingRequests = new AtomicInteger();
 	}
 
-	public void importAllData(GeoJsonLayer layer) {
+	private void importAllData(GeoJsonLayer layer) {
 		DatabaseReference featureRef;
 		for (GeoJsonFeature feature : layer.getFeatures()) {
 			String json = serialize(feature);
@@ -70,7 +71,7 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener, 
 		}
 	}
 
-	public void setAllGeos(GeoJsonLayer layer) {
+	private void setAllGeos(GeoJsonLayer layer) {
 		for (GeoJsonFeature feature : layer.getFeatures()) {
 			GeoJsonLineString geo = (GeoJsonLineString) feature.getGeometry();
 			List<LatLng> points = geo.getCoordinates();
@@ -82,7 +83,7 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener, 
 		}
 	}
 
-	public static String getCleaningDataKey(String key){
+	private static String getCleaningDataKey(String key){
 		return CLEANING_DATA_REF + "/" + key;
 	}
 
@@ -100,12 +101,12 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener, 
 		mGeoQuery.addGeoQueryEventListener(this);
 	}
 
-	public void addValueListener(String key){
+	private void addValueListener(String key){
 		outstandingRequests.incrementAndGet();
 		mDatabase.getReference(getCleaningDataKey(key)).addValueEventListener(this);
 	}
 
-	public void removeValueListener(String key) {
+	private void removeValueListener(String key) {
 		mDatabase.getReference(getCleaningDataKey(key)).removeEventListener(this);
 		mInterface.featureLeft(key);
 	}
@@ -121,9 +122,7 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener, 
 	}
 
 	@Override
-	public void onKeyMoved(String key, GeoLocation location) {
-		System.out.println(String.format("Key %s moved within the search area to [%f,%f]", key, location.latitude, location.longitude));
-	}
+	public void onKeyMoved(String key, GeoLocation location) {}
 
 	@Override
 	public void onGeoQueryReady() {
@@ -225,10 +224,12 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener, 
 		return !(getWeekOne(feature) && getWeekTwo(feature) && getWeekThree(feature) && getWeekFour(feature));
 	}
 
+	@SuppressWarnings("WeakerAccess")
 	public static int getHour(String time) {
 		return Integer.parseInt(time.substring(0, 2));
 	}
 
+	@SuppressWarnings("WeakerAccess")
 	public static int getMin(String time) {
 		return Integer.parseInt(time.substring(3, 5));
 	}
@@ -247,7 +248,7 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener, 
 			String day = feature.getProperty("WEEKDAY");
 			List<GeoJsonFeature> existing = clustered.get(day);
 			if (existing == null){
-				existing = new ArrayList<GeoJsonFeature>();
+				existing = new ArrayList<>();
 			}
 			existing.add(feature);
 			clustered.put(day, existing);
@@ -281,6 +282,7 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener, 
 		}
 	}
 
+	@SuppressWarnings("WeakerAccess")
 	public static String serialize(GeoJsonFeature feature) {
 		GsonBuilder builder = new GsonBuilder();
 		builder.registerTypeAdapter(GeoJsonLineStringStyle.class, new GeoJsonLineStringStyleSerializer());
@@ -290,6 +292,7 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener, 
 		return gson.toJson(feature);
 	}
 
+	@SuppressWarnings("WeakerAccess")
 	public static GeoJsonFeature deserialize(String json) {
 		GsonBuilder builder = new GsonBuilder();
 		builder.registerTypeAdapter(GeoJsonFeature.class, new GeoJsonFeatureInstanceCreator());

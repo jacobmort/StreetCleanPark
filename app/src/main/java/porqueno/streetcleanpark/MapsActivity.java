@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
@@ -49,7 +50,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		SeekBar.OnSeekBarChangeListener,
 		FeatureModelInterface {
 	private static final String TAG = "MapsActivity";
-	public static final int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 1000;
+	private static final int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 1000;
 	private static final float DEFAULT_LINE_WIDTH = 10.0f;
 	private static final int DEFAULT_DESIRED_PARK_HOURS = 24;
 	private final static long PAN_DEBOUNCE_THRESHOLD_MS = 1000;
@@ -137,7 +138,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		mLayer.setOnFeatureClickListener(this);
 		mLayer.addLayerToMap();
 		moveMapToSF(mMap);
-		//setupLocationWatch(mMap);
+		setupLocationWatch(mMap);
 	}
 
 	private void moveMapToSF(GoogleMap map){
@@ -167,7 +168,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		showSnackBar(feature);
 	}
 
-	public void setFeatureColors() {
+	private void setFeatureColors() {
 		calcColorsForLayer(mLayer);
 		hideProgressBar();
 	}
@@ -181,7 +182,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		}
 	}
 
-	public void addFeatureToMap(GeoJsonFeature feature){
+	private void addFeatureToMap(GeoJsonFeature feature){
 		if (!mGeoJsonFeatures.featuresLookupContains(feature)){
 			mGeoJsonFeatures.initTheFeature(feature);
 			mLayer.addFeature(feature);
@@ -195,7 +196,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		mGeoJsonFeatures.removeFeatureFromLookups(feature);
 	}
 
-	public void removeFeatureFromMap(String key) {
+	private void removeFeatureFromMap(String key) {
 		if (mGeoJsonFeatures.featuresLookupContains(key)){
 			removeFeatureFromMap(mGeoJsonFeatures.getFeatureFromLookup(key));
 		}
@@ -221,7 +222,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		}
 	}
 
-	public void hideProgressBar() {
+	private void hideProgressBar() {
 		mBinding.progress.setVisibility(View.INVISIBLE);
 	}
 
@@ -310,7 +311,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		}
 	}
 
-	public void promptForLocationPermissions() {
+	private void promptForLocationPermissions() {
 		if (ContextCompat.checkSelfPermission(this,
 				android.Manifest.permission.ACCESS_COARSE_LOCATION)
 				!= PackageManager.PERMISSION_GRANTED) {
@@ -338,7 +339,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	@Override
 	public void onRequestPermissionsResult(int requestCode,
-										   String permissions[], int[] grantResults) {
+										   @NonNull String permissions[], @NonNull int[] grantResults) {
 		switch (requestCode) {
 			case MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION: {
 				// If request is cancelled, the result arrays are empty.
@@ -385,7 +386,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 //		mMap.moveCamera(CameraUpdateFactory.newLatLng(
 //				new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude())
 //		));
-//		mMap.animateCamera( CameraUpdateFactory.zoomTo( 17.0f ) );
 	}
 
 	private void startLocationUpdates(){
