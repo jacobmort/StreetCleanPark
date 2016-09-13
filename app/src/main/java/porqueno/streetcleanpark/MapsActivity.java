@@ -1,6 +1,7 @@
 package porqueno.streetcleanpark;
 
 import android.content.pm.PackageManager;
+import android.databinding.DataBindingUtil;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
@@ -14,9 +15,7 @@ import android.text.Spanned;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
-import android.widget.ProgressBar;
 import android.widget.SeekBar;
-import android.widget.TextView;
 
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
@@ -44,6 +43,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import porqueno.streetcleanpark.databinding.MapsActivityBinding;
+
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GeoJsonLayer.GeoJsonOnFeatureClickListener, GoogleMap.OnCameraChangeListener, ActivityCompat.OnRequestPermissionsResultCallback, GoogleMap.OnMyLocationButtonClickListener, GoogleApiClient.ConnectionCallbacks, LocationListener, SeekBar.OnSeekBarChangeListener {
 	private static final String TAG = "MapsActivity";
 	public static final int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 1000;
@@ -55,11 +56,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	private final static long PAN_DEBOUNCE_THRESHOLD_MS = 1000;
 
 	private GoogleMap mMap;
-	private Snackbar mSnackbar;
-	private SeekBar mSeekBar;
-	private TextView mTextView;
 
-	private ProgressBar mProgress;
+	private MapsActivityBinding mBinding;
+	private Snackbar mSnackbar;
+
 	private int mDesiredParkHours;
 
 	private GoogleApiClient mGoogleApiClient;
@@ -79,16 +79,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		setContentView(R.layout.activity_maps);
-		mProgress = (ProgressBar) findViewById(R.id.progress);
-		mSeekBar = (SeekBar) findViewById(R.id.seekBar);
-		mTextView = (TextView) findViewById(R.id.hours_text);
-		mSeekBar.setOnSeekBarChangeListener(this);
+		mBinding = DataBindingUtil.setContentView(this, R.layout.maps_activity);
+		mBinding.seekBar.setOnSeekBarChangeListener(this);
 		mBlockSideFeaturesLookup = new HashMap<>();
 		mFeaturesOnMap = new HashMap<>();
 		mFeatureModel = new FeatureModel(this);
 
-		mSeekBar.setProgress(20);
+		mBinding.seekBar.setProgress(20);
 		previousCameraPanMs = 0;
 		mDesiredParkHours = DEFAULT_DESIRED_PARK_HOURS;
 
@@ -207,7 +204,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	}
 
 	public void hideProgressBar() {
-		mProgress.setVisibility(View.INVISIBLE);
+		mBinding.progress.setVisibility(View.INVISIBLE);
 	}
 
 	private void addFeatureToLookups(GeoJsonFeature feature) {
@@ -407,7 +404,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		double updatimeMs = SystemClock.uptimeMillis();
 		if ((updatimeMs - previousCameraPanMs) > PAN_DEBOUNCE_THRESHOLD_MS){
 			previousCameraPanMs = updatimeMs;
-			mProgress.setVisibility(View.VISIBLE);
+			mBinding.progress.setVisibility(View.VISIBLE);
 			mFeatureModel.getFeaturesForPoint(position.target.latitude, position.target.longitude);
 		}
 	}
@@ -484,11 +481,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	@Override
 	public void onLocationChanged(Location location) {
-		mLastLocation = location;
-		mMap.moveCamera(CameraUpdateFactory.newLatLng(
-				new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude())
-		));
-		mMap.animateCamera( CameraUpdateFactory.zoomTo( 17.0f ) );
+//		mLastLocation = location;
+//		mMap.moveCamera(CameraUpdateFactory.newLatLng(
+//				new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude())
+//		));
+//		mMap.animateCamera( CameraUpdateFactory.zoomTo( 17.0f ) );
 	}
 
 	private void startLocationUpdates(){
@@ -520,7 +517,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	@Override
 	public void onStopTrackingTouch(SeekBar seekBar){
-		mProgress.setVisibility(View.VISIBLE);
+		mBinding.progress.setVisibility(View.VISIBLE);
 		calcColorsForFeatures();
 	}
 
@@ -534,6 +531,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		} else {
 			result = Html.fromHtml(text);
 		}
-		mTextView.setText(result);
+		mBinding.hoursText.setText(result);
 	}
 }
