@@ -159,32 +159,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		showSnackBar(feature);
 	}
 
-	public void calcColors() {
+	public void setFeatureColors() {
 		calcColorsForLayer(mLayer);
 		hideProgressBar();
 	}
 
 	private void calcColorsForLayer(GeoJsonLayer layer) {
 		for (GeoJsonFeature feature : layer.getFeatures()) {
-			GeoJsonFeatures.setFeatureColor(
+			setFeatureColor(
 					feature,
 					mGeoJsonFeatures.calculateColorForFeature(feature, mDesiredParkHours)
 			);
 		}
-	}
-
-	private void setFeatureHoverStyle(GeoJsonFeature feature){
-		GeoJsonLineStringStyle lineStyle = new GeoJsonLineStringStyle();
-		lineStyle.setColor(Color.BLUE);
-		lineStyle.setWidth(DEFAULT_LINE_WIDTH * 1.5f);
-		feature.setLineStringStyle(lineStyle);
-	}
-
-	private void setFeatureHoverOffStyle(GeoJsonFeature feature){
-		GeoJsonLineStringStyle lineStyle = new GeoJsonLineStringStyle();
-		lineStyle.setColor(mGeoJsonFeatures.calculateColorForFeature(feature, mDesiredParkHours));
-		lineStyle.setWidth(DEFAULT_LINE_WIDTH);
-		feature.setLineStringStyle(lineStyle);
 	}
 
 	public void addFeatureToMap(GeoJsonFeature feature){
@@ -198,8 +184,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	private void removeFeatureFromMap(GeoJsonFeature feature) {
 		mLayer.removeFeature(feature);
-		mGeoJsonFeatures.removeBlockSideFeature(feature);
-		mGeoJsonFeatures.removeFeatureFromLookup(feature);
+		mGeoJsonFeatures.removeFeatureFromLookups(feature);
 	}
 
 	public void removeFeatureFromMap(String key) {
@@ -218,7 +203,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	}
 
 	// UI Elements
-
 	private void showSnackBar(GeoJsonFeature feature) {
 		if (mSnackbar == null){
 			mSnackbar = Snackbar.make(findViewById(R.id.map), getToastText(feature), Snackbar.LENGTH_INDEFINITE);
@@ -283,6 +267,27 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 			Log.e(TAG, "Block side data not found for:" + feature.getId());
 		}
 		return toastText;
+	}
+
+	private static void setFeatureColor(GeoJsonFeature feature, int color) {
+		GeoJsonLineStringStyle lineStyle = new GeoJsonLineStringStyle();
+		lineStyle.setColor(color);
+		feature.setLineStringStyle(lineStyle);
+		feature.notifyObservers();
+	}
+
+	private void setFeatureHoverStyle(GeoJsonFeature feature){
+		GeoJsonLineStringStyle lineStyle = new GeoJsonLineStringStyle();
+		lineStyle.setColor(Color.BLUE);
+		lineStyle.setWidth(DEFAULT_LINE_WIDTH * 1.5f);
+		feature.setLineStringStyle(lineStyle);
+	}
+
+	private void setFeatureHoverOffStyle(GeoJsonFeature feature){
+		GeoJsonLineStringStyle lineStyle = new GeoJsonLineStringStyle();
+		lineStyle.setColor(mGeoJsonFeatures.calculateColorForFeature(feature, mDesiredParkHours));
+		lineStyle.setWidth(DEFAULT_LINE_WIDTH);
+		feature.setLineStringStyle(lineStyle);
 	}
 
 	// Location handlers
@@ -404,6 +409,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	@Override
 	public void onStopTrackingTouch(SeekBar seekBar){
 		mBinding.progress.setVisibility(View.VISIBLE);
-		calcColors();
+		setFeatureColors();
 	}
 }

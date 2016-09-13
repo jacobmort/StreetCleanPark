@@ -6,7 +6,6 @@ import android.util.Log;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.maps.android.geojson.GeoJsonFeature;
 import com.google.maps.android.geojson.GeoJsonLineString;
-import com.google.maps.android.geojson.GeoJsonLineStringStyle;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -41,6 +40,11 @@ public class GeoJsonFeatures {
 		blockSideData.add(feature);
 		mBlockSideFeaturesLookup.put(key, blockSideData);
 		mFeaturesLookup.put(FeatureModel.getUniqueKey(feature), feature);
+	}
+
+	public void removeFeatureFromLookups(GeoJsonFeature feature){
+		removeBlockSideFeature(feature);
+		removeFeatureFromLookup(feature);
 	}
 
 	public List<GeoJsonFeature> getBlockSideFeatures(GeoJsonFeature feature){
@@ -112,13 +116,6 @@ public class GeoJsonFeatures {
 			adjPoints = points;
 		}
 		return new GeoJsonLineString(adjPoints);
-	}
-
-	public static void setFeatureColor(GeoJsonFeature feature, int color) {
-		GeoJsonLineStringStyle lineStyle = new GeoJsonLineStringStyle();
-		lineStyle.setColor(color);
-		feature.setLineStringStyle(lineStyle);
-		feature.notifyObservers();
 	}
 
 	public void initTheFeature(GeoJsonFeature feature){
