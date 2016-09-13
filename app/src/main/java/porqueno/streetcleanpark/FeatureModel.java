@@ -151,7 +151,7 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener, 
 		mActivity.addFeatureToMap(feature);
 		if (outstandingRequests.get() == 0){
 			// We have all data, we can now iterate to calc colors
-			mActivity.calcColorsForFeatures();
+			mActivity.calcColors();
 		}
 	}
 

@@ -31,10 +31,7 @@ import com.google.maps.android.geojson.GeoJsonLineStringStyle;
 
 import org.json.JSONObject;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -47,8 +44,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	public static final int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 1000;
 	private static final float DEFAULT_LINE_WIDTH = 10.0f;
 	private static final int DEFAULT_DESIRED_PARK_HOURS = 24;
-	public final static int NO_TIME = Color.RED;
-	public final static int NO_DATA = Color.BLACK;
 	private final static long PAN_DEBOUNCE_THRESHOLD_MS = 1000;
 
 	private GoogleMap mMap;
@@ -61,10 +56,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	private GeoJsonLayer mLayer;
 	private GeoJsonFeature mLastFeatureActive;
 
-	// Aggregate features by same block side
-	private Map<String, List<GeoJsonFeature>> mBlockSideFeaturesLookup;
-	// Feature lookup by unique key
-	private Map<String, GeoJsonFeature> mFeaturesOnMap;
+	private GeoJsonFeatures mGeoJsonFeatures;
 
 	private FeatureModel mFeatureModel;
 	private double mMsWhenPreviousCameraPan;
@@ -77,8 +69,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		mBinding.seekBar.setProgress(20);
 
 		mDesiredParkHours = DEFAULT_DESIRED_PARK_HOURS;
-		mBlockSideFeaturesLookup = new HashMap<>();
-		mFeaturesOnMap = new HashMap<>();
+		mGeoJsonFeatures = new GeoJsonFeatures();
 		mFeatureModel = new FeatureModel(this);
 		mMsWhenPreviousCameraPan = 0;
 		mBinding.setHoursToPark(String.valueOf(mDesiredParkHours));
@@ -168,65 +159,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		showSnackBar(feature);
 	}
 
-	private void initTheFeature(GeoJsonFeature feature){
-		feature.setGeometry(GeoJsonFeatures.getAdjustedGeo(feature));
-		addFeatureToLookups(feature);
-	}
-
-	public void calcColorsForFeatures() {
-		calcColorsForFeatures(mLayer);
+	public void calcColors() {
+		calcColorsForLayer(mLayer);
 		hideProgressBar();
 	}
 
-	private void calcColorsForFeatures(GeoJsonLayer layer) {
+	private void calcColorsForLayer(GeoJsonLayer layer) {
 		for (GeoJsonFeature feature : layer.getFeatures()) {
 			GeoJsonFeatures.setFeatureColor(
 					feature,
-					calculateColorForFeature(FeatureModel.getUniqueKeyForBlockSide(feature))
+					mGeoJsonFeatures.calculateColorForFeature(feature, mDesiredParkHours)
 			);
-		}
-	}
-
-	private void addFeatureToLookups(GeoJsonFeature feature) {
-		String key = FeatureModel.getUniqueKeyForBlockSide(feature);
-		List<GeoJsonFeature> blockSideData = mBlockSideFeaturesLookup.get(key);
-		if (blockSideData == null) {
-			blockSideData = new ArrayList<>();
-		}
-		blockSideData.add(feature);
-		mBlockSideFeaturesLookup.put(key, blockSideData);
-		mFeaturesOnMap.put(FeatureModel.getUniqueKey(feature), feature);
-	}
-
-	private int calculateColorForFeature(String featureKey) {
-		Calendar now = Calendar.getInstance();
-		List<GeoJsonFeature> blockSideData = mBlockSideFeaturesLookup.get(featureKey);
-		if (blockSideData != null){
-			Calendar next;
-			Calendar soonest = null;
-			for (GeoJsonFeature feature: blockSideData) {
-				next = TimeHelper.getNextOccurrence(
-						now,
-						FeatureModel.getWeekday(feature),
-						FeatureModel.getStartHour(feature),
-						FeatureModel.getStartMin(feature),
-						FeatureModel.getEndHour(feature),
-						FeatureModel.getEndMin(feature),
-						FeatureModel.getWeekOne(feature),
-						FeatureModel.getWeekTwo(feature),
-						FeatureModel.getWeekThree(feature),
-						FeatureModel.getWeekFour(feature)
-
-				);
-
-				if (soonest == null || next.getTimeInMillis() < soonest.getTimeInMillis()){
-					soonest = next;
-				}
-			}
-			return getColor(now, soonest, mDesiredParkHours);
-		}else {
-			Log.e(TAG, "No data for:" + featureKey);
-			return NO_DATA;
 		}
 	}
 
@@ -239,61 +182,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	private void setFeatureHoverOffStyle(GeoJsonFeature feature){
 		GeoJsonLineStringStyle lineStyle = new GeoJsonLineStringStyle();
-		lineStyle.setColor(calculateColorForFeature(FeatureModel.getUniqueKeyForBlockSide(feature)));
+		lineStyle.setColor(mGeoJsonFeatures.calculateColorForFeature(feature, mDesiredParkHours));
 		lineStyle.setWidth(DEFAULT_LINE_WIDTH);
 		feature.setLineStringStyle(lineStyle);
 	}
 
-	private String getToastText(String featureKey) {
-		List<GeoJsonFeature> blockSideData = mBlockSideFeaturesLookup.get(featureKey);
-		String toastText = "";
-		if (blockSideData != null) {
-			Map<String, List<GeoJsonFeature>> clusteredByDay = FeatureModel.clusterFeaturesByTime(blockSideData);
-			for (List<GeoJsonFeature> features: clusteredByDay.values()){
-				String daysString = FeatureModel.getDays(features);
-				GeoJsonFeature feature = features.get(0); // Clustered by time so any one works
-				if (toastText.equals("")){
-					// Only put streetname 1st once
-					toastText +=
-							feature.getProperty("STREETNAME") + " ";
-				}
-				toastText +=
-						daysString +
-								" from " +
-								feature.getProperty("FROMHOUR") +
-								"-" +
-								feature.getProperty("TOHOUR");
-				toastText += " " + getToastTextWhichWeeks(features);
-			}
-		}else {
-			Log.e(TAG, "Block side data not found for:" + featureKey);
-		}
-		return toastText;
-	}
-
-	public static int getColor(Calendar now, Calendar then, int desiredHoursToPark) {
-		long hoursDiff = TimeHelper.getHoursDiff(now, then);
-		if (hoursDiff < desiredHoursToPark) {
-			return NO_TIME;
-		} else {
-			return getColorForGoodStreet(hoursDiff, desiredHoursToPark);
-		}
-	}
-
-	public static int getColorForGoodStreet(long hoursDiff, int desiredHoursToPark) {
-		double ratio = hoursDiff / (desiredHoursToPark * 2);
-		Double greenAmt = 255 * ratio;
-		if (greenAmt > 255){
-			greenAmt = 255d;
-		} else if (greenAmt < 100){
-			greenAmt = 100d;
-		}
-		return Color.rgb(0, greenAmt.intValue(), 0);
-	}
-
 	public void addFeatureToMap(GeoJsonFeature feature){
-		if (!mFeaturesOnMap.containsKey(FeatureModel.getUniqueKey(feature))){
-			initTheFeature(feature);
+		if (!mGeoJsonFeatures.featuresLookupContains(feature)){
+			mGeoJsonFeatures.initTheFeature(feature);
 			mLayer.addFeature(feature);
 		} else {
 			Log.i(TAG,"tried to add duplicate feature");
@@ -302,13 +198,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	private void removeFeatureFromMap(GeoJsonFeature feature) {
 		mLayer.removeFeature(feature);
-		mBlockSideFeaturesLookup.remove(FeatureModel.getUniqueKeyForBlockSide(feature));
-		mFeaturesOnMap.remove(FeatureModel.getUniqueKey(feature));
+		mGeoJsonFeatures.removeBlockSideFeature(feature);
+		mGeoJsonFeatures.removeFeatureFromLookup(feature);
 	}
 
 	public void removeFeatureFromMap(String key) {
-		if (mFeaturesOnMap.containsKey(key)){
-			removeFeatureFromMap(mFeaturesOnMap.get(key));
+		if (mGeoJsonFeatures.featuresLookupContains(key)){
+			removeFeatureFromMap(mGeoJsonFeatures.getFeatureFromLookup(key));
 		}
 	}
 
@@ -325,10 +221,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	private void showSnackBar(GeoJsonFeature feature) {
 		if (mSnackbar == null){
-			mSnackbar = Snackbar.make(findViewById(R.id.map), getToastText(FeatureModel.getUniqueKeyForBlockSide(feature)), Snackbar.LENGTH_INDEFINITE);
+			mSnackbar = Snackbar.make(findViewById(R.id.map), getToastText(feature), Snackbar.LENGTH_INDEFINITE);
 			mSnackbar.show();
 		} else {
-			mSnackbar.setText(getToastText(FeatureModel.getUniqueKeyForBlockSide(feature)));
+			mSnackbar.setText(getToastText(feature));
 		}
 	}
 
@@ -360,6 +256,33 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		} else {
 			return "";
 		}
+	}
+
+	private String getToastText(GeoJsonFeature feature) {
+		List<GeoJsonFeature> blockSideData = mGeoJsonFeatures.getBlockSideFeatures(feature);
+		String toastText = "";
+		if (blockSideData != null) {
+			Map<String, List<GeoJsonFeature>> clusteredByDay = FeatureModel.clusterFeaturesByTime(blockSideData);
+			for (List<GeoJsonFeature> features: clusteredByDay.values()){
+				String daysString = FeatureModel.getDays(features);
+				GeoJsonFeature firstBlocksideFeature = features.get(0); // Clustered by time so any one works
+				if (toastText.equals("")){
+					// Only put streetname 1st once
+					toastText +=
+							firstBlocksideFeature.getProperty("STREETNAME") + " ";
+				}
+				toastText +=
+						daysString +
+								" from " +
+								firstBlocksideFeature.getProperty("FROMHOUR") +
+								"-" +
+								firstBlocksideFeature.getProperty("TOHOUR");
+				toastText += " " + getToastTextWhichWeeks(features);
+			}
+		}else {
+			Log.e(TAG, "Block side data not found for:" + feature.getId());
+		}
+		return toastText;
 	}
 
 	// Location handlers
@@ -481,6 +404,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	@Override
 	public void onStopTrackingTouch(SeekBar seekBar){
 		mBinding.progress.setVisibility(View.VISIBLE);
-		calcColorsForFeatures();
+		calcColors();
 	}
 }
