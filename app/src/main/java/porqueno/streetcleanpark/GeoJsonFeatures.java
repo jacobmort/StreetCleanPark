@@ -91,7 +91,7 @@ public class GeoJsonFeatures {
 		List<LatLng> points = geo.getCoordinates();
 		List<LatLng> adjPoints = new ArrayList<>();
 		// Some features have a bunch of points = better specification and don't need tweaks
-		if (points.size() == 2) {
+		if (side != null && points.size() == 2) {
 			double latAdj = latAdjustScalar(side);
 			double lngAdj = lngAdjustScalar(side);
 			for (LatLng point : points) {

@@ -39,7 +39,7 @@ import java.util.Set;
 
 import porqueno.streetcleanpark.databinding.MapsActivityBinding;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GeoJsonLayer.GeoJsonOnFeatureClickListener, GoogleMap.OnCameraChangeListener, ActivityCompat.OnRequestPermissionsResultCallback, GoogleMap.OnMyLocationButtonClickListener, GoogleApiClient.ConnectionCallbacks, LocationListener, SeekBar.OnSeekBarChangeListener {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GeoJsonLayer.GeoJsonOnFeatureClickListener, GoogleMap.OnCameraIdleListener, ActivityCompat.OnRequestPermissionsResultCallback, GoogleMap.OnMyLocationButtonClickListener, GoogleApiClient.ConnectionCallbacks, LocationListener, SeekBar.OnSeekBarChangeListener {
 	private static final String TAG = "MapsActivity";
 	public static final int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 1000;
 	private static final float DEFAULT_LINE_WIDTH = 10.0f;
@@ -123,13 +123,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	@Override
 	public void onMapReady(GoogleMap googleMap) {
 		mMap = googleMap;
-		mMap.setOnCameraChangeListener(this);
+		mMap.setOnCameraIdleListener(this);
 		mMap.setOnMyLocationButtonClickListener(this);
 		mLayer = new GeoJsonLayer(googleMap, new JSONObject());
 		mLayer.setOnFeatureClickListener(this);
 		mLayer.addLayerToMap();
 		moveMapToSF(mMap);
-		setupLocationWatch(mMap);
+		//setupLocationWatch(mMap);
 	}
 
 	private void moveMapToSF(GoogleMap map){
@@ -193,9 +193,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		}
 	}
 
-	public void onCameraChange (CameraPosition position) {
+	public void onCameraIdle () {
 		double updatimeMs = SystemClock.uptimeMillis();
 		if ((updatimeMs - mMsWhenPreviousCameraPan) > PAN_DEBOUNCE_THRESHOLD_MS){
+			CameraPosition position = mMap.getCameraPosition();
 			mMsWhenPreviousCameraPan = updatimeMs;
 			mBinding.progress.setVisibility(View.VISIBLE);
 			mFeatureModel.getFeaturesForPoint(position.target.latitude, position.target.longitude);
@@ -360,11 +361,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 			Log.i(TAG, "location permissions not accepted");
 		}
 
-		if (mLastLocation != null) {
-			mMap.moveCamera(CameraUpdateFactory.newLatLng(
-					new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude())
-			));
-		}
+//		if (mLastLocation != null) {
+//			mMap.moveCamera(CameraUpdateFactory.newLatLng(
+//					new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude())
+//			));
+//		}
 	}
 
 	@Override
