@@ -301,4 +301,9 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener, 
 		Gson gson = builder.create();
 		return gson.fromJson(json, GeoJsonFeature.class);
 	}
+
+	public void writeAllGeoData(GeoJsonLayer layer) {
+		importAllData(layer);
+		setAllGeos(layer);
+	}
 }

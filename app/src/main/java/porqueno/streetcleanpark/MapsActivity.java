@@ -27,7 +27,6 @@ import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.maps.android.geojson.GeoJsonFeature;
 import com.google.maps.android.geojson.GeoJsonLayer;
-import com.google.maps.android.geojson.GeoJsonLineString;
 import com.google.maps.android.geojson.GeoJsonLineStringStyle;
 
 import org.json.JSONObject;
@@ -46,7 +45,6 @@ import porqueno.streetcleanpark.databinding.MapsActivityBinding;
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GeoJsonLayer.GeoJsonOnFeatureClickListener, GoogleMap.OnCameraChangeListener, ActivityCompat.OnRequestPermissionsResultCallback, GoogleMap.OnMyLocationButtonClickListener, GoogleApiClient.ConnectionCallbacks, LocationListener, SeekBar.OnSeekBarChangeListener {
 	private static final String TAG = "MapsActivity";
 	public static final int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 1000;
-	private static final double COORD_ADJUST_AMOUNT = 0.0000003;
 	private static final float DEFAULT_LINE_WIDTH = 10.0f;
 	private static final int DEFAULT_DESIRED_PARK_HOURS = 24;
 	public final static int NO_TIME = Color.RED;
@@ -54,12 +52,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	private final static long PAN_DEBOUNCE_THRESHOLD_MS = 1000;
 
 	private GoogleMap mMap;
-
 	private MapsActivityBinding mBinding;
 	private Snackbar mSnackbar;
-
 	private int mDesiredParkHours;
-
 	private GoogleApiClient mGoogleApiClient;
 	private Location mLastLocation;
 
@@ -72,7 +67,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	private Map<String, GeoJsonFeature> mFeaturesOnMap;
 
 	private FeatureModel mFeatureModel;
-	private double previousCameraPanMs;
+	private double mMsWhenPreviousCameraPan;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -85,7 +80,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		mBlockSideFeaturesLookup = new HashMap<>();
 		mFeaturesOnMap = new HashMap<>();
 		mFeatureModel = new FeatureModel(this);
-		previousCameraPanMs = 0;
+		mMsWhenPreviousCameraPan = 0;
 		mBinding.setHoursToPark(String.valueOf(mDesiredParkHours));
 
 		// Obtain the SupportMapFragment and get notified when the map is ready to be used.
@@ -101,14 +96,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	@Override
 	protected void onStart() {
-		mGoogleApiClient.connect();
 		super.onStart();
+		mGoogleApiClient.connect();
 	}
 
 	@Override
 	protected void onStop() {
-		mGoogleApiClient.disconnect();
 		super.onStop();
+		mGoogleApiClient.disconnect();
 	}
 
 	@Override
@@ -130,9 +125,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	/**
 	 * Manipulates the map once available.
-	 * This callback is triggered when the map is ready to be used.
-	 * This is where we can add markers or lines, add listeners or move the camera. In this case,
-	 * we just add a marker near sf, Australia.
 	 * If Google Play services is not installed on the device, the user will be prompted to install
 	 * it inside the SupportMapFragment. This method will only be triggered once the user has
 	 * installed Google Play services and returned to the app.
@@ -140,31 +132,31 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	@Override
 	public void onMapReady(GoogleMap googleMap) {
 		mMap = googleMap;
+		mMap.setOnCameraChangeListener(this);
+		mMap.setOnMyLocationButtonClickListener(this);
+		mLayer = new GeoJsonLayer(googleMap, new JSONObject());
+		mLayer.setOnFeatureClickListener(this);
+		mLayer.addLayerToMap();
+		moveMapToSF(mMap);
+		setupLocationWatch(mMap);
+	}
+
+	private void moveMapToSF(GoogleMap map){
 		// Add a marker in sf and move the camera
 		LatLng sf = new LatLng(37.751019, -122.506810);
-		googleMap.setOnCameraChangeListener(this);
-		googleMap.setOnMyLocationButtonClickListener(this);
-//		try {
-//			GeoJsonLayer layer = new GeoJsonLayer(googleMap, R.raw.streetsweep_latlng, this);
-//			mFeatureModel.importAllData(layer);
-//			mFeatureModel.setAllGeos(layer);
-			mLayer = new GeoJsonLayer(googleMap, new JSONObject());
-			mLayer.setOnFeatureClickListener(this);
-			mLayer.addLayerToMap();
-			mMap.moveCamera(CameraUpdateFactory.newLatLng(sf));
-			mMap.animateCamera( CameraUpdateFactory.zoomTo( 17.0f ) );
-//		} catch (java.io.IOException e) {
-//			e.printStackTrace();
-//		} catch (org.json.JSONException e) {
-//			e.printStackTrace();
-//		}
-		if (ContextCompat.checkSelfPermission(this,
-				android.Manifest.permission.ACCESS_COARSE_LOCATION)
-				!= PackageManager.PERMISSION_GRANTED) {
-			promptForLocationPermissions();
-		}else {
-			mMap.setMyLocationEnabled(true);
+		map.moveCamera(CameraUpdateFactory.newLatLng(sf));
+		map.animateCamera( CameraUpdateFactory.zoomTo( 17.0f ) );
+	}
+
+	// Note: have to turn on write in Firebase first
+	private void saveSweepData() {
+		try{
+			GeoJsonLayer layer = new GeoJsonLayer(mMap, R.raw.streetsweep_latlng, this);
+			mFeatureModel.writeAllGeoData(layer);
+		} catch (java.io.IOException | org.json.JSONException e) {
+			e.printStackTrace();
 		}
+
 	}
 
 	public void onFeatureClick(GeoJsonFeature feature) {
@@ -176,17 +168,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		showSnackBar(feature);
 	}
 
-	private void showSnackBar(GeoJsonFeature feature) {
-		if (mSnackbar == null){
-			mSnackbar = Snackbar.make(findViewById(R.id.map), getToastText(FeatureModel.getUniqueKeyForBlockSide(feature)), Snackbar.LENGTH_INDEFINITE);
-			mSnackbar.show();
-		} else {
-			mSnackbar.setText(getToastText(FeatureModel.getUniqueKeyForBlockSide(feature)));
-		}
-	}
-
 	private void initTheFeature(GeoJsonFeature feature){
-		feature.setGeometry(getAdjustedGeo(feature));
+		feature.setGeometry(GeoJsonFeatures.getAdjustedGeo(feature));
 		addFeatureToLookups(feature);
 	}
 
@@ -197,12 +180,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	private void calcColorsForFeatures(GeoJsonLayer layer) {
 		for (GeoJsonFeature feature : layer.getFeatures()) {
-			setFeatureColor(feature, calculateColorForFeature(FeatureModel.getUniqueKeyForBlockSide(feature)));
+			GeoJsonFeatures.setFeatureColor(
+					feature,
+					calculateColorForFeature(FeatureModel.getUniqueKeyForBlockSide(feature))
+			);
 		}
-	}
-
-	public void hideProgressBar() {
-		mBinding.progress.setVisibility(View.INVISIBLE);
 	}
 
 	private void addFeatureToLookups(GeoJsonFeature feature) {
@@ -214,13 +196,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		blockSideData.add(feature);
 		mBlockSideFeaturesLookup.put(key, blockSideData);
 		mFeaturesOnMap.put(FeatureModel.getUniqueKey(feature), feature);
-	}
-	
-	private void setFeatureColor(GeoJsonFeature feature, int color) {
-		GeoJsonLineStringStyle lineStyle = new GeoJsonLineStringStyle();
-		lineStyle.setColor(color);
-		feature.setLineStringStyle(lineStyle);
-		feature.notifyObservers();
 	}
 
 	private int calculateColorForFeature(String featureKey) {
@@ -253,41 +228,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 			Log.e(TAG, "No data for:" + featureKey);
 			return NO_DATA;
 		}
-	}
-
-	private GeoJsonLineString getAdjustedGeo(GeoJsonFeature feature) {
-		String side = feature.getProperty("BLOCKSIDE");
-		GeoJsonLineString geo = (GeoJsonLineString) feature.getGeometry();
-		List<LatLng> points = geo.getCoordinates();
-		List<LatLng> adjPoints = new ArrayList<LatLng>();
-		if (points.size() == 2) {
-			// Some features have better specification and don't need the tweaks
-			double latAdj, lngAdj;
-			latAdj = 1.0;
-			lngAdj = 1.0;
-			if (side != null) {
-				if (side.equals("East")) {
-					lngAdj = 1.0 - COORD_ADJUST_AMOUNT;
-				} else if (side.equals("West")) {
-					lngAdj = 1.0 + COORD_ADJUST_AMOUNT;
-				} else if (side.equals("North")) {
-					// Lat needs bigger adj than lng
-					latAdj = 1.0 + COORD_ADJUST_AMOUNT * 2;
-				} else if (side.equals("South")) {
-					// South sides already seem off from center
-					latAdj = 1.0 - COORD_ADJUST_AMOUNT;
-				}
-			}
-
-			for (LatLng point : points) {
-				adjPoints.add(
-						new LatLng(point.latitude * latAdj, point.longitude * lngAdj)
-				);
-			}
-		} else {
-			adjPoints = points;
-		}
-		return new GeoJsonLineString(adjPoints);
 	}
 
 	private void setFeatureHoverStyle(GeoJsonFeature feature){
@@ -329,32 +269,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 			Log.e(TAG, "Block side data not found for:" + featureKey);
 		}
 		return toastText;
-	}
-
-	private String getToastTextWhichWeeks(List<GeoJsonFeature> features) {
-		Set<String> days = new HashSet<>();
-		for (GeoJsonFeature feature : features) {
-			if (!FeatureModel.getWeekOne(feature)) {
-				days.add("1st");
-			}
-			if (!FeatureModel.getWeekTwo(feature)) {
-				days.add("2nd");
-			}
-			if (!FeatureModel.getWeekThree(feature)) {
-				days.add("3rd");
-			}
-
-			if (!FeatureModel.getWeekFour(feature)) {
-				days.add("4th");
-			}
-		}
-		if (days.size() != 4 && days.size() != 0) {
-			String[] daysArr = days.toArray(new String[days.size()]);
-			Arrays.sort(daysArr);
-			return TextUtils.join(", ", daysArr) + " of the month";
-		} else {
-			return "";
-		}
 	}
 
 	public static int getColor(Calendar now, Calendar then, int desiredHoursToPark) {
@@ -400,10 +314,62 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	public void onCameraChange (CameraPosition position) {
 		double updatimeMs = SystemClock.uptimeMillis();
-		if ((updatimeMs - previousCameraPanMs) > PAN_DEBOUNCE_THRESHOLD_MS){
-			previousCameraPanMs = updatimeMs;
+		if ((updatimeMs - mMsWhenPreviousCameraPan) > PAN_DEBOUNCE_THRESHOLD_MS){
+			mMsWhenPreviousCameraPan = updatimeMs;
 			mBinding.progress.setVisibility(View.VISIBLE);
 			mFeatureModel.getFeaturesForPoint(position.target.latitude, position.target.longitude);
+		}
+	}
+
+	// UI Elements
+
+	private void showSnackBar(GeoJsonFeature feature) {
+		if (mSnackbar == null){
+			mSnackbar = Snackbar.make(findViewById(R.id.map), getToastText(FeatureModel.getUniqueKeyForBlockSide(feature)), Snackbar.LENGTH_INDEFINITE);
+			mSnackbar.show();
+		} else {
+			mSnackbar.setText(getToastText(FeatureModel.getUniqueKeyForBlockSide(feature)));
+		}
+	}
+
+	public void hideProgressBar() {
+		mBinding.progress.setVisibility(View.INVISIBLE);
+	}
+
+	private String getToastTextWhichWeeks(List<GeoJsonFeature> features) {
+		Set<String> days = new HashSet<>();
+		for (GeoJsonFeature feature : features) {
+			if (!FeatureModel.getWeekOne(feature)) {
+				days.add("1st");
+			}
+			if (!FeatureModel.getWeekTwo(feature)) {
+				days.add("2nd");
+			}
+			if (!FeatureModel.getWeekThree(feature)) {
+				days.add("3rd");
+			}
+
+			if (!FeatureModel.getWeekFour(feature)) {
+				days.add("4th");
+			}
+		}
+		if (days.size() != 4 && days.size() != 0) {
+			String[] daysArr = days.toArray(new String[days.size()]);
+			Arrays.sort(daysArr);
+			return TextUtils.join(", ", daysArr) + " of the month";
+		} else {
+			return "";
+		}
+	}
+
+	// Location handlers
+	private void setupLocationWatch(GoogleMap map){
+		if (ContextCompat.checkSelfPermission(this,
+				android.Manifest.permission.ACCESS_COARSE_LOCATION)
+				!= PackageManager.PERMISSION_GRANTED) {
+			promptForLocationPermissions();
+		}else {
+			map.setMyLocationEnabled(true);
 		}
 	}
 
@@ -474,8 +440,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	}
 
 	@Override
-	public void onConnectionSuspended(int val) {
-	}
+	public void onConnectionSuspended(int val) {}
 
 	@Override
 	public void onLocationChanged(Location location) {
@@ -499,9 +464,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	}
 
+	// SeekBar handlers
 	@Override
-	public void onStartTrackingTouch(SeekBar seekBar){
-	}
+	public void onStartTrackingTouch(SeekBar seekBar){}
 
 	@Override
 	public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser){
