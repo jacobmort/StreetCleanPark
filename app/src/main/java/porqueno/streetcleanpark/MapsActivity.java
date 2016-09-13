@@ -39,7 +39,15 @@ import java.util.Set;
 
 import porqueno.streetcleanpark.databinding.MapsActivityBinding;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GeoJsonLayer.GeoJsonOnFeatureClickListener, GoogleMap.OnCameraIdleListener, ActivityCompat.OnRequestPermissionsResultCallback, GoogleMap.OnMyLocationButtonClickListener, GoogleApiClient.ConnectionCallbacks, LocationListener, SeekBar.OnSeekBarChangeListener {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,
+		GeoJsonLayer.GeoJsonOnFeatureClickListener,
+		GoogleMap.OnCameraIdleListener,
+		ActivityCompat.OnRequestPermissionsResultCallback,
+		GoogleMap.OnMyLocationButtonClickListener,
+		GoogleApiClient.ConnectionCallbacks,
+		LocationListener,
+		SeekBar.OnSeekBarChangeListener,
+		FeatureModelInterface {
 	private static final String TAG = "MapsActivity";
 	public static final int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 1000;
 	private static final float DEFAULT_LINE_WIDTH = 10.0f;
@@ -410,6 +418,19 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	@Override
 	public void onStopTrackingTouch(SeekBar seekBar){
 		mBinding.progress.setVisibility(View.VISIBLE);
+		setFeatureColors();
+	}
+
+	// FeatureModelInterface
+	public void featureFound(GeoJsonFeature feature){
+		addFeatureToMap(feature);
+	}
+
+	public void featureLeft(String featureKey){
+		removeFeatureFromMap(featureKey);
+	}
+	public void doneFetching(){
+		hideProgressBar();
 		setFeatureColors();
 	}
 }

@@ -1,5 +1,6 @@
 package porqueno.streetcleanpark;
 
+import android.content.Context;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -46,19 +47,16 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener, 
 	private static final String CLEANING_DATA_REF = "cleaning";
 	private static final String GEOFIRE_DATA_REF = "geofire";
 
-
 	private FirebaseDatabase mDatabase;
 	private GeoFire mGeoFire;
 	private GeoQuery mGeoQuery;
-	private MapsActivity mActivity; // Make sure model dies with this activity otherwise leak memory
-	private List<GeoJsonFeature> mNearbyFeatures;
 	private AtomicInteger outstandingRequests;
+	private FeatureModelInterface mInterface;
 
-	FeatureModel(MapsActivity mainActivity) {
+	FeatureModel(Context ctx) {
 		mDatabase = FirebaseDatabase.getInstance();
 		mGeoFire = new GeoFire(mDatabase.getReference(GEOFIRE_DATA_REF));
-		mActivity = mainActivity;
-		mNearbyFeatures = new ArrayList<>();
+		mInterface = (FeatureModelInterface) ctx;
 		outstandingRequests = new AtomicInteger();
 	}
 
@@ -109,7 +107,7 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener, 
 
 	public void removeValueListener(String key) {
 		mDatabase.getReference(getCleaningDataKey(key)).removeEventListener(this);
-		mActivity.removeFeatureFromMap(key);
+		mInterface.featureLeft(key);
 	}
 
 	@Override
@@ -129,10 +127,9 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener, 
 
 	@Override
 	public void onGeoQueryReady() {
-		System.out.println("All initial data has been loaded and events have been fired!");
 		if (outstandingRequests.get() == 0){
 			// When zooming on map we won't get new points/onDataChange event
-			mActivity.hideProgressBar();
+			mInterface.doneFetching();
 		}
 	}
 
@@ -148,10 +145,10 @@ public class FeatureModel implements GeoQueryEventListener, ValueEventListener, 
 			outstandingRequests.set(0);
 		}
 		GeoJsonFeature feature = deserialize(dataSnapshot.getValue(String.class));
-		mActivity.addFeatureToMap(feature);
+		mInterface.featureFound(feature);
 		if (outstandingRequests.get() == 0){
 			// We have all data, we can now iterate to calc colors
-			mActivity.setFeatureColors();
+			mInterface.doneFetching();
 		}
 	}
 
