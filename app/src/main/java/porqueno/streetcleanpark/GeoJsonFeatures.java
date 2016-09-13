@@ -21,6 +21,8 @@ public class GeoJsonFeatures {
 	private static final double COORD_ADJUST_AMOUNT = 0.0000003;
 	public final static int NO_TIME = Color.RED;
 	public final static int NO_DATA = Color.BLACK;
+	public final static double MAX_COLOR_AMT = 255d;
+	public final static double MIN_COLOR_AMT = 100d;
 	// Aggregate features by same block side
 	private Map<String, List<GeoJsonFeature>> mBlockSideFeaturesLookup;
 	// Feature lookup by unique key
@@ -32,14 +34,17 @@ public class GeoJsonFeatures {
 	}
 
 	public void addFeatureToLookups(GeoJsonFeature feature) {
-		String key = FeatureModel.getUniqueKeyForBlockSide(feature);
-		List<GeoJsonFeature> blockSideData = mBlockSideFeaturesLookup.get(key);
+		String blockSideKey = FeatureModel.getUniqueKeyForBlockSide(feature);
+		List<GeoJsonFeature> blockSideData = mBlockSideFeaturesLookup.get(blockSideKey);
 		if (blockSideData == null) {
 			blockSideData = new ArrayList<>();
 		}
 		blockSideData.add(feature);
-		mBlockSideFeaturesLookup.put(key, blockSideData);
-		mFeaturesLookup.put(FeatureModel.getUniqueKey(feature), feature);
+		mBlockSideFeaturesLookup.put(blockSideKey, blockSideData);
+		mFeaturesLookup.put(
+				FeatureModel.getUniqueKey(feature),
+				feature
+		);
 	}
 
 	public void removeFeatureFromLookups(GeoJsonFeature feature){
@@ -59,23 +64,20 @@ public class GeoJsonFeatures {
 		);
 	}
 
-	public boolean featuresLookupContains(GeoJsonFeature feature){
-		return mFeaturesLookup.containsKey(
-				FeatureModel.getUniqueKey(feature)
-		);
-	}
 
 	public GeoJsonFeature getFeatureFromLookup(String uniqueFeatureKey){
 		return mFeaturesLookup.get(uniqueFeatureKey);
 	}
 
+	public boolean featuresLookupContains(GeoJsonFeature feature){
+		return featuresLookupContains(
+				FeatureModel.getUniqueKey(feature)
+		);
+	}
+
 	public boolean featuresLookupContains(String uniqueFeatureKey){
 		return mFeaturesLookup.containsKey(uniqueFeatureKey);
 	}
-
-//	public Map<String, GeoJsonFeature> getFeaturesLookup() {
-//		return mFeaturesLookup;
-//	}
 
 	public void removeFeatureFromLookup(GeoJsonFeature feature) {
 		mFeaturesLookup.remove(
@@ -87,26 +89,11 @@ public class GeoJsonFeatures {
 		String side = feature.getProperty("BLOCKSIDE");
 		GeoJsonLineString geo = (GeoJsonLineString) feature.getGeometry();
 		List<LatLng> points = geo.getCoordinates();
-		List<LatLng> adjPoints = new ArrayList<LatLng>();
+		List<LatLng> adjPoints = new ArrayList<>();
+		// Some features have a bunch of points = better specification and don't need tweaks
 		if (points.size() == 2) {
-			// Some features have better specification and don't need the tweaks
-			double latAdj, lngAdj;
-			latAdj = 1.0;
-			lngAdj = 1.0;
-			if (side != null) {
-				if (side.equals("East")) {
-					lngAdj = 1.0 - COORD_ADJUST_AMOUNT;
-				} else if (side.equals("West")) {
-					lngAdj = 1.0 + COORD_ADJUST_AMOUNT;
-				} else if (side.equals("North")) {
-					// Lat needs bigger adj than lng
-					latAdj = 1.0 + COORD_ADJUST_AMOUNT * 2;
-				} else if (side.equals("South")) {
-					// South sides already seem off from center
-					latAdj = 1.0 - COORD_ADJUST_AMOUNT;
-				}
-			}
-
+			double latAdj = latAdjustScalar(side);
+			double lngAdj = lngAdjustScalar(side);
 			for (LatLng point : points) {
 				adjPoints.add(
 						new LatLng(point.latitude * latAdj, point.longitude * lngAdj)
@@ -116,6 +103,29 @@ public class GeoJsonFeatures {
 			adjPoints = points;
 		}
 		return new GeoJsonLineString(adjPoints);
+	}
+
+	private static double latAdjustScalar(String blockSide){
+		switch(blockSide){
+			case "North":
+				// North side seems to need a bigger adj
+				return 1.0 + COORD_ADJUST_AMOUNT * 2;
+			case "South":
+				return 1.0 - COORD_ADJUST_AMOUNT;
+			default:
+				return 1.0;
+		}
+	}
+
+	private static double lngAdjustScalar(String blockSide){
+		switch(blockSide){
+			case "East":
+				return 1.0 - COORD_ADJUST_AMOUNT;
+			case "West":
+				return 1.0 + COORD_ADJUST_AMOUNT;
+			default:
+				return 1.0;
+		}
 	}
 
 	public void initTheFeature(GeoJsonFeature feature){
@@ -166,11 +176,11 @@ public class GeoJsonFeatures {
 
 	public static int getColorForGoodStreet(long hoursDiff, int desiredHoursToPark) {
 		double ratio = hoursDiff / (desiredHoursToPark * 2);
-		Double greenAmt = 255 * ratio;
-		if (greenAmt > 255){
-			greenAmt = 255d;
-		} else if (greenAmt < 100){
-			greenAmt = 100d;
+		Double greenAmt = MAX_COLOR_AMT * ratio;
+		if (greenAmt > MAX_COLOR_AMT){
+			greenAmt = MAX_COLOR_AMT;
+		} else if (greenAmt < MIN_COLOR_AMT){
+			greenAmt = MIN_COLOR_AMT;
 		}
 		return Color.rgb(0, greenAmt.intValue(), 0);
 	}
