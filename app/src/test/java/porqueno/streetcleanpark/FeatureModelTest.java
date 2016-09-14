@@ -1,6 +1,7 @@
 package porqueno.streetcleanpark;
 
 import com.google.android.gms.maps.model.LatLng;
+import com.google.gson.Gson;
 import com.google.maps.android.geojson.GeoJsonFeature;
 import com.google.maps.android.geojson.GeoJsonLineString;
 
@@ -77,7 +78,9 @@ public class FeatureModelTest {
 
 		String json = FeatureModel.serialize(feature);
 
-		GeoJsonFeature thawedFeature = FeatureModel.deserialize(json);
+		Gson gson = FeatureModel.createGsonParser();
+
+		GeoJsonFeature thawedFeature = FeatureModel.deserialize(gson, json);
 
 		for (String key : thawedFeature.getPropertyKeys()) {
 			assertThat(feature.getProperty(key), is(thawedFeature.getProperty(key)));

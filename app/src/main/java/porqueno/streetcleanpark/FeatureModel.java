@@ -1,6 +1,7 @@
 package porqueno.streetcleanpark;
 
 import android.content.Context;
+import android.os.AsyncTask;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -24,12 +25,14 @@ import com.google.maps.android.geojson.GeoJsonLineStringStyle;
 import com.google.maps.android.geojson.GeoJsonPointStyle;
 import com.google.maps.android.geojson.GeoJsonPolygonStyle;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -47,18 +50,31 @@ class FeatureModel implements GeoQueryEventListener, ValueEventListener, GeoFire
 	private static final String TAG = "FeatureModel";
 	private static final String CLEANING_DATA_REF = "cleaning";
 	private static final String GEOFIRE_DATA_REF = "geofire";
+	private static int NUM_TO_BATCH_DESERIALIZE = 10;
 
 	private FirebaseDatabase mDatabase;
 	private GeoFire mGeoFire;
 	private GeoQuery mGeoQuery;
 	private AtomicInteger outstandingRequests;
 	private FeatureModelInterface mInterface;
+	private Gson mGson;
+	private Queue<String> deserializeQueue;
+
 
 	FeatureModel(Context ctx) {
 		mDatabase = FirebaseDatabase.getInstance();
 		mGeoFire = new GeoFire(mDatabase.getReference(GEOFIRE_DATA_REF));
 		mInterface = (FeatureModelInterface) ctx;
 		outstandingRequests = new AtomicInteger();
+		mGson = createGsonParser();
+		deserializeQueue = new ArrayDeque<>();
+	}
+
+	public static Gson createGsonParser(){
+		GsonBuilder mBuilder = new GsonBuilder();
+		mBuilder.registerTypeAdapter(GeoJsonFeature.class, new GeoJsonFeatureInstanceCreator());
+		mBuilder.registerTypeAdapter(GeoJsonGeometry.class, new GeoJsonGeometryDeserializer());
+		return mBuilder.create();
 	}
 
 	private void importAllData(GeoJsonLayer layer) {
@@ -139,15 +155,14 @@ class FeatureModel implements GeoQueryEventListener, ValueEventListener, GeoFire
 
 	@Override
 	public void onDataChange(DataSnapshot dataSnapshot) {
-		outstandingRequests.decrementAndGet();
+		Log.i(TAG, "outstanding:"+String.valueOf(outstandingRequests.decrementAndGet()));
 		if (outstandingRequests.get() < 0){
 			outstandingRequests.set(0);
 		}
-		GeoJsonFeature feature = deserialize(dataSnapshot.getValue(String.class));
-		mInterface.featureFound(feature);
-		if (outstandingRequests.get() == 0){
-			// We have all data, we can now iterate to calc colors
-			mInterface.doneFetching();
+		deserializeQueue.add(dataSnapshot.getValue(String.class));
+		if (deserializeQueue.size() >= NUM_TO_BATCH_DESERIALIZE || outstandingRequests.get() == 0){
+			new DeserializeAsyncTask().execute(deserializeQueue.toArray(new String[0]));
+			deserializeQueue.clear();
 		}
 	}
 
@@ -292,13 +307,31 @@ class FeatureModel implements GeoQueryEventListener, ValueEventListener, GeoFire
 		return gson.toJson(feature);
 	}
 
+	private class DeserializeAsyncTask extends AsyncTask<String, GeoJsonFeature, Void> {
+		protected Void doInBackground(String... jsons) {
+			for (String json : jsons){
+				publishProgress(deserialize(mGson, json));
+			}
+			return null;
+		}
+
+		@Override
+		protected void onProgressUpdate(GeoJsonFeature... features) {
+			for (GeoJsonFeature feature : features){
+				mInterface.featureFound(feature);
+			}
+		}
+
+		protected void onPostExecute(Void param) {
+			if (outstandingRequests.get() == 0){
+				// We have all data, we can now iterate to calc colors
+				mInterface.doneFetching();
+			}
+		}
+	}
+
 	@SuppressWarnings("WeakerAccess")
-	public static GeoJsonFeature deserialize(String json) {
-		GsonBuilder builder = new GsonBuilder();
-		builder.registerTypeAdapter(GeoJsonFeature.class, new GeoJsonFeatureInstanceCreator());
-		//builder.registerTypeAdapter(GeoJsonGeometry.class, new GeoJsonGeometryInstanceCreator());
-		builder.registerTypeAdapter(GeoJsonGeometry.class, new GeoJsonGeometryDeserializer());
-		Gson gson = builder.create();
+	public static GeoJsonFeature deserialize(Gson gson, String json) {
 		return gson.fromJson(json, GeoJsonFeature.class);
 	}
 

@@ -283,7 +283,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		GeoJsonLineStringStyle lineStyle = new GeoJsonLineStringStyle();
 		lineStyle.setColor(color);
 		feature.setLineStringStyle(lineStyle);
-		feature.notifyObservers();
 	}
 
 	private void setFeatureHoverStyle(GeoJsonFeature feature){
