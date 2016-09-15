@@ -9,6 +9,7 @@ import com.google.maps.android.geojson.GeoJsonLineString;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,10 +28,13 @@ class GeoJsonFeatures {
 	private Map<String, List<GeoJsonFeature>> mBlockSideFeaturesLookup;
 	// Feature lookup by unique key
 	private Map<String, GeoJsonFeature> mFeaturesLookup;
+	// Features not on map yet
+	private Collection<GeoJsonFeature> mFeaturesNotOnMap;
 
 	public GeoJsonFeatures(){
 		mBlockSideFeaturesLookup = new HashMap<>();
 		mFeaturesLookup = new HashMap<>();
+		mFeaturesNotOnMap = new ArrayList<>();
 	}
 
 	private void addFeatureToLookups(GeoJsonFeature feature) {
@@ -45,6 +49,7 @@ class GeoJsonFeatures {
 				FeatureModel.getUniqueKey(feature),
 				feature
 		);
+		mFeaturesNotOnMap.add(feature);
 	}
 
 	public void removeFeatureFromLookups(GeoJsonFeature feature){
@@ -62,6 +67,16 @@ class GeoJsonFeatures {
 		mBlockSideFeaturesLookup.remove(
 				FeatureModel.getUniqueKeyForBlockSide(feature)
 		);
+	}
+
+	public Collection<GeoJsonFeature> getAllFeatures() { return mFeaturesLookup.values(); }
+
+	public Collection<GeoJsonFeature> getFeaturesNotOnMap(){
+		return mFeaturesNotOnMap;
+	}
+
+	public void clearFeaturesNotOnMap(){
+		mFeaturesNotOnMap.clear();
 	}
 
 

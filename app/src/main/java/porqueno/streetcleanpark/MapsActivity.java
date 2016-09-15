@@ -33,6 +33,7 @@ import com.google.maps.android.geojson.GeoJsonLineStringStyle;
 import org.json.JSONObject;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -168,24 +169,30 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		showSnackBar(feature);
 	}
 
+	private void addFeaturesToMap(Collection<GeoJsonFeature> features){
+		for (GeoJsonFeature feature : features){
+			mLayer.addFeature(feature);
+		}
+	}
+
 	private void setFeatureColors() {
-		calcColorsForLayer(mLayer);
+		calcColorsForLayer(mGeoJsonFeatures.getAllFeatures(), mDesiredParkHours);
 		hideProgressBar();
 	}
 
-	private void calcColorsForLayer(GeoJsonLayer layer) {
-		for (GeoJsonFeature feature : layer.getFeatures()) {
+	private void calcColorsForLayer(Collection<GeoJsonFeature> features, int desiredParkHours) {
+		for (GeoJsonFeature feature : features) {
 			setFeatureColor(
 					feature,
-					mGeoJsonFeatures.calculateColorForFeature(feature, mDesiredParkHours)
+					mGeoJsonFeatures.calculateColorForFeature(feature, desiredParkHours)
 			);
 		}
 	}
 
-	private void addFeatureToMap(GeoJsonFeature feature){
+
+	private void initFeature(GeoJsonFeature feature){
 		if (!mGeoJsonFeatures.featuresLookupContains(feature)){
 			mGeoJsonFeatures.initTheFeature(feature);
-			mLayer.addFeature(feature);
 		} else {
 			Log.i(TAG,"tried to add duplicate feature");
 		}
@@ -422,14 +429,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	// FeatureModelInterface
 	public void featureFound(GeoJsonFeature feature){
-		addFeatureToMap(feature);
+		initFeature(feature);
 	}
 
 	public void featureLeft(String featureKey){
 		removeFeatureFromMap(featureKey);
 	}
 	public void doneFetching(){
-		hideProgressBar();
 		setFeatureColors();
+		addFeaturesToMap(mGeoJsonFeatures.getFeaturesNotOnMap());
+		mGeoJsonFeatures.clearFeaturesNotOnMap();
 	}
 }
