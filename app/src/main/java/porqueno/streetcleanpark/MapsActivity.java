@@ -144,7 +144,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	private void moveMapToSF(GoogleMap map){
 		// Add a marker in sf and move the camera
-		LatLng sf = new LatLng(37.751019, -122.506810);
+		LatLng sf = new LatLng(37.7749, -122.4194);
 		map.moveCamera(CameraUpdateFactory.newLatLng(sf));
 		map.animateCamera( CameraUpdateFactory.zoomTo( 17.0f ) );
 	}
@@ -376,11 +376,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 			Log.i(TAG, "location permissions not accepted");
 		}
 
-//		if (mLastLocation != null) {
-//			mMap.moveCamera(CameraUpdateFactory.newLatLng(
-//					new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude())
-//			));
-//		}
+		if (mLastLocation != null) {
+			mMap.moveCamera(CameraUpdateFactory.newLatLng(
+					new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude())
+			));
+		}
 	}
 
 	@Override
@@ -388,10 +388,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 	@Override
 	public void onLocationChanged(Location location) {
-//		mLastLocation = location;
-//		mMap.moveCamera(CameraUpdateFactory.newLatLng(
-//				new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude())
-//		));
+		mLastLocation = location;
+		mMap.moveCamera(CameraUpdateFactory.newLatLng(
+				new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude())
+		));
 	}
 
 	private void startLocationUpdates(){
@@ -404,7 +404,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 		} catch (SecurityException e) {
 			Log.i(TAG, "did not provide location permissions");
 		}
-
 	}
 
 	// SeekBar handlers

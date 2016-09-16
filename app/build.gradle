@@ -53,9 +53,7 @@ dependencies {
     compile 'com.android.support:appcompat-v7:24.2.1'
     compile 'com.google.android.gms:play-services:9.4.0'
     compile 'com.android.support:design:24.2.1'
-
-    // Currently compiling included aar BC released version doesn't have GeoJsonOnFeatureClickListener
-    compile (name:'android-maps-utils-debug', ext:'aar')
+    compile 'com.google.maps.android:android-maps-utils:0.4.4'
 
     compile 'com.google.firebase:firebase-core:9.2.1'
     compile 'com.google.firebase:firebase-database:9.2.1'
