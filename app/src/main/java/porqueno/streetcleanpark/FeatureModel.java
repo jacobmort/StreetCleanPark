@@ -50,12 +50,13 @@ class FeatureModel implements GeoQueryEventListener, ValueEventListener, GeoFire
 	private static final String TAG = "FeatureModel";
 	private static final String CLEANING_DATA_REF = "cleaning";
 	private static final String GEOFIRE_DATA_REF = "geofire";
-	private static int NUM_TO_BATCH_DESERIALIZE = 10;
+	private static final int NUM_TO_BATCH_DESERIALIZE = 10;
 
 	private FirebaseDatabase mDatabase;
 	private GeoFire mGeoFire;
 	private GeoQuery mGeoQuery;
 	private AtomicInteger outstandingRequests;
+	private AtomicInteger outstandingDeserializeBatches;
 	private FeatureModelInterface mInterface;
 	private Gson mGson;
 	private Queue<String> deserializeQueue;
@@ -65,7 +66,8 @@ class FeatureModel implements GeoQueryEventListener, ValueEventListener, GeoFire
 		mDatabase = FirebaseDatabase.getInstance();
 		mGeoFire = new GeoFire(mDatabase.getReference(GEOFIRE_DATA_REF));
 		mInterface = (FeatureModelInterface) ctx;
-		outstandingRequests = new AtomicInteger();
+		outstandingRequests = new AtomicInteger(0);
+		outstandingDeserializeBatches = new AtomicInteger(0);
 		mGson = createGsonParser();
 		deserializeQueue = new ArrayDeque<>();
 	}
@@ -105,6 +107,7 @@ class FeatureModel implements GeoQueryEventListener, ValueEventListener, GeoFire
 
 	public void getFeaturesForPoint(double lat, double lng) {
 		outstandingRequests.set(0);
+		outstandingDeserializeBatches.set(0);
 		if (mGeoQuery == null) {
 			setupGeoQuery(lat, lng);
 		} else {
@@ -155,12 +158,10 @@ class FeatureModel implements GeoQueryEventListener, ValueEventListener, GeoFire
 
 	@Override
 	public void onDataChange(DataSnapshot dataSnapshot) {
-		Log.i(TAG, "outstanding:"+String.valueOf(outstandingRequests.decrementAndGet()));
-		if (outstandingRequests.get() < 0){
-			outstandingRequests.set(0);
-		}
+		outstandingRequests.decrementAndGet();
 		deserializeQueue.add(dataSnapshot.getValue(String.class));
-		if (deserializeQueue.size() >= NUM_TO_BATCH_DESERIALIZE || outstandingRequests.get() == 0){
+		if (deserializeQueue.size() >= NUM_TO_BATCH_DESERIALIZE || outstandingRequests.get() <= 0){
+			outstandingDeserializeBatches.incrementAndGet();
 			new DeserializeAsyncTask().execute(deserializeQueue.toArray(new String[0]));
 			deserializeQueue.clear();
 		}
@@ -323,7 +324,7 @@ class FeatureModel implements GeoQueryEventListener, ValueEventListener, GeoFire
 		}
 
 		protected void onPostExecute(Void param) {
-			if (outstandingRequests.get() == 0){
+			if (outstandingDeserializeBatches.decrementAndGet() == 0 && deserializeQueue.size() == 0){
 				// We have all data, we can now iterate to calc colors
 				mInterface.doneFetching();
 			}

@@ -376,11 +376,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 			Log.i(TAG, "location permissions not accepted");
 		}
 
-		if (mLastLocation != null) {
-			mMap.moveCamera(CameraUpdateFactory.newLatLng(
-					new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude())
-			));
-		}
+//		if (mLastLocation != null) {
+//			mMap.moveCamera(CameraUpdateFactory.newLatLng(
+//					new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude())
+//			));
+//		}
 	}
 
 	@Override
@@ -389,9 +389,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 	@Override
 	public void onLocationChanged(Location location) {
 		mLastLocation = location;
-		mMap.moveCamera(CameraUpdateFactory.newLatLng(
-				new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude())
-		));
+//		mMap.moveCamera(CameraUpdateFactory.newLatLng(
+//				new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude())
+//		));
 	}
 
 	private void startLocationUpdates(){
